@@ -12,7 +12,7 @@
 
 <ol>
   <li>플로우 차트</li>
-  <img src="https://github.com/user-attachments/assets/d1f9777c-4a8d-4d4d-806f-23d6b062191f">
+  <img src="https://github.com/user-attachments/assets/5b989e05-a334-4c7e-82b6-76fdfa29c24f">
 </ol>
 
 ### 사용 언어/라이브러리
