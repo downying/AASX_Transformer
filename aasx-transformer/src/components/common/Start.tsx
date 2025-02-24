@@ -19,8 +19,8 @@ const Start = () => {
                                 <path d="M11 1H886V-1H11V1ZM893 8V457H895V8H893ZM886 464H11V466H886V464ZM4 457V7.99999H2V457H4ZM11 464C7.134 464 4 460.866 4 457H2C2 461.971 6.02943 466 11 466V464ZM893 457C893 460.866 889.866 464 886 464V466C890.971 466 895 461.971 895 457H893ZM886 1C889.866 1 893 4.13401 893 8H895C895 3.02944 890.971 -1 886 -1V1ZM11 -1C6.02944 -1 2 3.02943 2 7.99999H4C4 4.134 7.13401 1 11 1V-1Z" fill="#D9D9D9" mask="url(#path-1-inside-1_4_871)" />
                             </g>
                             <defs>
-                                <filter id="filter0_dd_4_871" x="0" y="0" width="897" height="472" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-                                    <feFlood flood-opacity="0" result="BackgroundImageFix" />
+                                <filter id="filter0_dd_4_871" x="0" y="0" width="897" height="472" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
                                     <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
                                     <feMorphology radius="1" operator="erode" in="SourceAlpha" result="effect1_dropShadow_4_871" />
                                     <feOffset dy="4" />
@@ -46,7 +46,7 @@ const Start = () => {
                     </div>
                     <div data-svg-wrapper className="left-[400px] top-[232px] absolute">
                         <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M49.9999 45.8333V70.8333M37.4999 58.3333H62.4999M91.6666 79.1667C91.6666 81.3768 90.7886 83.4964 89.2258 85.0592C87.663 86.622 85.5434 87.5 83.3332 87.5H16.6666C14.4564 87.5 12.3368 86.622 10.774 85.0592C9.21123 83.4964 8.33325 81.3768 8.33325 79.1667V20.8333C8.33325 18.6232 9.21123 16.5036 10.774 14.9408C12.3368 13.378 14.4564 12.5 16.6666 12.5H37.4999L45.8333 25H83.3332C85.5434 25 87.663 25.878 89.2258 27.4408C90.7886 29.0036 91.6666 31.1232 91.6666 33.3333V79.1667Z" stroke="#1E1E1E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M49.9999 45.8333V70.8333M37.4999 58.3333H62.4999M91.6666 79.1667C91.6666 81.3768 90.7886 83.4964 89.2258 85.0592C87.663 86.622 85.5434 87.5 83.3332 87.5H16.6666C14.4564 87.5 12.3368 86.622 10.774 85.0592C9.21123 83.4964 8.33325 81.3768 8.33325 79.1667V20.8333C8.33325 18.6232 9.21123 16.5036 10.774 14.9408C12.3368 13.378 14.4564 12.5 16.6666 12.5H37.4999L45.8333 25H83.3332C85.5434 25 87.663 25.878 89.2258 27.4408C90.7886 29.0036 91.6666 31.1232 91.6666 33.3333V79.1667Z" stroke="#1E1E1E" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </div>
                 </div>
