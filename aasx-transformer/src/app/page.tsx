@@ -14,7 +14,7 @@ const Start = () => {
       <div className="w-60 justify-center items-center gap-4 inline-flex mt-6">
         {/* 메인 화면으로 이동 */}
         <Link href="/main" passHref>
-          <Button className="mt-4 bg-blue-500 hover:bg-blue-400 w-40" variant="default">
+          <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white w-40" variant="default">
             Start
           </Button>
         </Link>

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { uploadFile } from "@/lib/api/fileUpload";
+import Link from "next/link";
 
 const MainPage = () => {
 
@@ -94,56 +95,65 @@ const MainPage = () => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
-      {/* 컨테이너 */}
-      <Card className="w-full max-w-4xl shadow-lg">
-        {/* 헤더 */}
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl md:text-3xl font-semibold">
-            Upload the AASX package file
-          </CardTitle>
-          <p className="text-muted-foreground text-sm md:text-base">
-            for URL download in JSON format
-          </p>
-        </CardHeader>
-
-        {/* 업로드 영역 */}
-        <CardContent>
-        <div
-            className={`flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl ${
-              isDragging ? "border-blue-500" : ""
-            }`}
-            onClick={handleFileClick}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <p className="text-center text-gray-500 mb-4">
-              Drag & Drop your file here or click to select
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleFileChange}
-              className="hidden mb-4"
-              accept=".aasx" // 특정 확장자만 허용 가능
-            />
-            {/* 선택된 파일 정보 표시 */}
-            {selectedFile && (
-              <div className="mt-4 mb-8 text-center">
-                <p className="text-lg text-gray-700">Selected File:</p>
-                <p className="text-gray-500">{selectedFile.name}</p>
-                <p className="text-gray-400 text-sm">
-                  Size: {(selectedFile.size / 1024).toFixed(2)} KB
-                </p>
-              </div>
-            )}
-            <Button onClick={handleUpload} variant="default">
-              Upload
+      {/* 전체를 하나의 div로 묶기 */}
+      <div className="w-full max-w-4xl">
+        {/* 홈으로 돌아가는 링크 */}
+        <div className="flex items-start mb-4">
+          <Link href="/">
+            <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white" variant="default">
+              Home
             </Button>
-
-          </div>
-        </CardContent>
-      </Card>
+          </Link>
+        </div>
+        {/* 컨테이너 */}
+        <Card>
+          {/* 헤더 */}
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl md:text-3xl font-semibold">
+              Upload the AASX package file
+            </CardTitle>
+            <p className="text-muted-foreground text-sm md:text-base">
+              for URL download in JSON format
+            </p>
+          </CardHeader>
+          {/* 업로드 영역 */}
+          <CardContent>
+            <div
+              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl ${
+                isDragging ? "border-blue-500" : ""
+              }`}
+              onClick={handleFileClick}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <p className="text-center text-gray-500 mb-4">
+                Drag & Drop your file here or click to select
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileChange}
+                className="hidden mb-4"
+                accept=".aasx" // 특정 확장자만 허용 가능
+              />
+              {/* 선택된 파일 정보 표시 */}
+              {selectedFile && (
+                <div className="mt-4 mb-8 text-center">
+                  <p className="text-lg text-gray-700">Selected File:</p>
+                  <p className="text-gray-500">{selectedFile.name}</p>
+                  <p className="text-gray-400 text-sm">
+                    Size: {(selectedFile.size / 1024).toFixed(2)} KB
+                  </p>
+                </div>
+              )}
+              <Button onClick={handleUpload} variant="default">
+                Upload
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
