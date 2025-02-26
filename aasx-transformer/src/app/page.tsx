@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";  
 import { Button } from "@/components/ui/button"; 
 
+// 초기 화면 
 const Start = () => {
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
@@ -11,6 +12,7 @@ const Start = () => {
         </div>
       </div>
       <div className="w-60 justify-center items-center gap-4 inline-flex mt-6">
+        {/* 메인 화면으로 이동 */}
         <Link href="/main" passHref>
           <Button className="mt-4 bg-blue-500 hover:bg-blue-400 w-40" variant="default">
             Start
