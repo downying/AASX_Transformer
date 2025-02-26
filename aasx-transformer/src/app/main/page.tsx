@@ -75,7 +75,7 @@ const MainPage = () => {
     // 웹 애플리케이션에서 파일을 업로드할 때는 multipart/form-data 형식이 필요
     const formData = new FormData();
     formData.append("file", selectedFile);
-    console.log(formData);
+    console.log("formData : ", formData);
 
     try {
       const response = await uploadFile(formData);
