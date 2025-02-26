@@ -22,7 +22,7 @@ const MainPage = () => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       setSelectedFile(file);
-      console.log("선택한 파일 : ", file); 
+      console.log("선택한 파일 : ", file);
       console.log("선택한 파일 (상태 업데이트 전):", selectedFile);
     }
   };
@@ -31,7 +31,7 @@ const MainPage = () => {
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     // 기본적으로, HTML 요소 위로 파일을 드래그할 경우, 
     // 브라우저는 해당 파일을 열거나 다운로드하려고 시도하는데 이를 방지
-    event.preventDefault(); 
+    event.preventDefault();
     // 사용자가 파일을 드래그 중인 상태임
     setIsDragging(true);
   };
@@ -67,7 +67,7 @@ const MainPage = () => {
   const handleUpload = async () => {
     if (!selectedFile) {
       // 파일이 선택되지 않았을 때 로그 출력
-    console.log("파일이 선택되지 않았습니다.");
+      console.log("파일이 선택되지 않았습니다.");
       alert("파일을 선택하세요.");
       return; // 업로드 요청을 아예 실행하지 않음
     }
@@ -79,15 +79,15 @@ const MainPage = () => {
 
     try {
       const response = await uploadFile(formData);
-      alert(response); 
+      alert(response);
       console.log("파일 업로드 : ", response)
     } catch (error) {
       alert("업로드 실패");
     }
   };
 
-   // 파일 선택을 위한 클릭 이벤트 처리
-   const handleFileClick = () => {
+  // 파일 선택을 위한 클릭 이벤트 처리
+  const handleFileClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click(); // 파일 선택 input을 클릭하게 만듦
     }
@@ -119,9 +119,8 @@ const MainPage = () => {
           {/* 업로드 영역 */}
           <CardContent>
             <div
-              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl ${
-                isDragging ? "border-blue-500" : ""
-              }`}
+              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl ${isDragging ? "border-blue-500" : ""
+                }`}
               onClick={handleFileClick}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -147,14 +146,15 @@ const MainPage = () => {
                   </p>
                 </div>
               )}
-              <Button onClick={handleUpload} variant="default">
-                Upload
-              </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            {/* 업로드 버튼 */}
+            <Button onClick={handleUpload} variant="default" className="mt-4 w-full">
+              Upload
+            </Button>
+        </CardContent>
+      </Card>
     </div>
+    </div >
   );
 };
 
