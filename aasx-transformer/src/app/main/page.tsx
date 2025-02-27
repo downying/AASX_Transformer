@@ -11,19 +11,21 @@ const MainPage = () => {
   // selectedFile : 사용자가 선택한 파일을 저장
   // setSelectedFile : 파일을 업데이트
   // 초깃값은 null, 파일이 선택되면 파일 객체가 저장
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   // drag and drop
   const [isDragging, setIsDragging] = useState(false);
+  // 업로드된 파일의 이름 목록
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]); 
   // 파일 선택 input을 참조하기 위한 ref
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 파일 선택
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      const file = event.target.files[0];
-      setSelectedFile(file);
-      console.log("선택한 파일 : ", file);
-      console.log("선택한 파일 (상태 업데이트 전):", selectedFile);
+      const filesArray = Array.from(event.target.files);
+      setSelectedFiles((prevFiles) => [...prevFiles, ...filesArray]);
+      console.log("선택한 파일 : ", filesArray);
+      console.log("선택한 파일 (상태 업데이트 전):", selectedFiles);
     }
   };
 
@@ -49,23 +51,23 @@ const MainPage = () => {
     // 드래그 상태를 종료
     setIsDragging(false);
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-      const file = event.dataTransfer.files[0];
-      setSelectedFile(file);
-      console.log("드래그앤드랍으로 선택된 파일 : ", file);
-      console.log("선택한 파일 (상태 업데이트 전):", selectedFile);
+      const filesArray = Array.from(event.dataTransfer.files);
+      setSelectedFiles((prevFiles) => [...prevFiles, ...filesArray]);
+      console.log("드래그앤드랍으로 선택된 파일 : ", filesArray);
+      console.log("선택한 파일 (상태 업데이트 전):", selectedFiles);
     }
   };
 
-  // selectedFile이 setState후 정상적으로 반영되었는지 확인
+  // 업로드 후 input 값 초기화
   useEffect(() => {
-    if (selectedFile) {
-      console.log("선택한 파일 (상태 업데이트 후):", selectedFile);
+    if (selectedFiles.length === 0 && fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
-  }, [selectedFile]);
+  }, [selectedFiles]);
 
   // 파일 업로드
   const handleUpload = async () => {
-    if (!selectedFile) {
+    if (selectedFiles.length === 0) {
       // 파일이 선택되지 않았을 때 로그 출력
       console.log("파일이 선택되지 않았습니다.");
       alert("파일을 선택하세요.");
@@ -74,14 +76,25 @@ const MainPage = () => {
 
     // 웹 애플리케이션에서 파일을 업로드할 때는 multipart/form-data 형식이 필요
     const formData = new FormData();
-    formData.append("file", selectedFile);
+    selectedFiles.forEach((file) => formData.append("files", file));
     console.log("formData : ", formData);
 
     try {
       const response = await uploadFile(formData);
-      alert(response);
-      console.log("파일 업로드 : ", response)
+      console.log("서버 응답: ", response);
+
+      alert("업로드 성공");
+
+      // 업로드 성공 후, 업로드된 파일 목록에 새로 업로드한 파일들 추가
+      setUploadedFiles(prevFiles => [
+        ...prevFiles,
+        ...selectedFiles.map(file => file.name)
+      ]);
+
+      // 업로드 후 selectedFiles 비우기
+      setSelectedFiles([]);
     } catch (error) {
+      console.error("업로드 오류: ", error);
       alert("업로드 실패");
     }
   };
@@ -135,15 +148,17 @@ const MainPage = () => {
                 onChange={handleFileChange}
                 className="hidden mb-4"
                 accept=".aasx" // 특정 확장자만 허용 가능
+                multiple
               />
               {/* 선택된 파일 정보 표시 */}
-              {selectedFile && (
+              {selectedFiles.length > 0 && (
                 <div className="mt-4 mb-8 text-center">
-                  <p className="text-lg text-gray-700">Selected File:</p>
-                  <p className="text-gray-500">{selectedFile.name}</p>
-                  <p className="text-gray-400 text-sm">
-                    Size: {(selectedFile.size / 1024).toFixed(2)} KB
-                  </p>
+                  <p className="text-lg text-gray-700">Selected Files:</p>
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="text-gray-500">
+                      {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -151,9 +166,9 @@ const MainPage = () => {
             <Button onClick={handleUpload} variant="default" className="mt-4 w-full">
               Upload
             </Button>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
     </div >
   );
 };
