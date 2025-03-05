@@ -13,7 +13,7 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(@SuppressWarnings("null") CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns("*") // 특정 도메인만 허용
+                        .allowedOriginPatterns("*") 
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);

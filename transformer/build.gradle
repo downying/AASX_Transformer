@@ -34,6 +34,21 @@ dependencies {
 
 	// File Upload 관련 의존성
 	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+
+	// aas4j 라이브러리
+   	implementation 'org.eclipse.digitaltwin.aas4j:aas4j-dataformat-aasx:1.0.4'
+   	implementation 'org.eclipse.digitaltwin.aas4j:aas4j-dataformat-json:1.0.4'
+   	implementation 'org.eclipse.digitaltwin.aas4j:aas4j-model:1.0.4'
+	
+    // implementation 'org.eclipse.digitaltwin.aas4j:aas4j-model:1.0.4'
+    // implementation 'org.eclipse.digitaltwin.aas4j:aas4j-dataformat-core:1.0.4'
+    // implementation 'org.eclipse.digitaltwin.aas4j:aas4j-dataformat-json:1.0.4'
+    // implementation 'org.eclipse.digitaltwin.aas4j:aas4j-dataformat-xml:1.0.4'
+
+   	// OPCPackage와 관련된 Apache POI 의존성 추가
+    implementation 'org.apache.poi:poi-ooxml:5.2.3'  // 필요에 따라 버전 변경
+    implementation 'org.apache.poi:poi-ooxml-schemas:4.1.2'
+
 }
 
 tasks.named('test') {

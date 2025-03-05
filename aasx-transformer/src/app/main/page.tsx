@@ -147,7 +147,6 @@ const MainPage = () => {
                 type="file"
                 onChange={handleFileChange}
                 className="hidden mb-4"
-                accept=".aasx" // 특정 확장자만 허용 가능
                 multiple
               />
               {/* 선택된 파일 정보 표시 */}
