@@ -29,13 +29,17 @@ public class AASXFileDeserializer {
 
                     // Environment 객체를 읽음
                     Environment environment = deserializer.read();  // 하나씩 처리
-                    log.info("environment : ", environment);
+                    if (environment == null) {
+                        log.info("환경 객체가 null입니다.");
+                        break;
+                    }
+
+                    log.info("environment: {}", environment);
 
                     // Environment 객체를 JSON으로 변환하여 리스트에 추가
                     String json = convertEnvironmentToJson(environment);
-                    log.info("json 변환 : ", json);
+                    log.info("json 변환: {}", json);
                     jsonResults.add(json);
-                    log.info("jsonResult : ", jsonResults);
 
                 } catch (Exception e) {
                     log.info("AASX 파일에서 더 이상 읽을 수 있는 객체가 없습니다.");
@@ -57,7 +61,7 @@ public class AASXFileDeserializer {
         try {
             JsonSerializer jsonSerializer = new JsonSerializer();
             String json = jsonSerializer.write(environment);  // JSON 문자열로 변환하여 반환
-            log.info("converEnvironmentToJson - json : ", json);
+            log.info("convertEnvironmentToJson - json: {}", json);
 
             return json;
         } catch (Exception e) {

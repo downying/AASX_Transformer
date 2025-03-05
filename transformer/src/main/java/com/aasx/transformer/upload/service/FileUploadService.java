@@ -28,7 +28,6 @@ public class FileUploadService {
     @Value("${upload.path}")
     private String uploadPath;
 
-    // 업로드된 파일 이름을 저장할 리스트
     private final List<String> uploadedFileNames = new CopyOnWriteArrayList<>();
 
     public List<String> uploadFiles(MultipartFile[] files) {
@@ -41,18 +40,27 @@ public class FileUploadService {
             try {
                 String filePath = uploadPath + File.separator + file.getOriginalFilename();
                 File destFile = new File(filePath);
-                Files.createDirectories(Paths.get(uploadPath));
-
+                
                 // 파일을 실제로 디스크에 저장
+                Files.createDirectories(Paths.get(uploadPath)); // 디렉토리 생성
                 try (FileOutputStream fos = new FileOutputStream(destFile)) {
                     fos.write(file.getBytes());
                 }
 
+                // 파일이 디스크에 제대로 저장되었는지 확인
+                log.info("파일이 저장된 경로: {}", destFile.getAbsolutePath());
+                log.info("파일 저장 후 크기: {}", destFile.length());
+
                 // AASX 파일을 처리하는 로직
                 InputStream inputStream = file.getInputStream();
+
+                // 파일 스트림 크기 디버깅
+                log.info("파일 스트림 크기: {}", inputStream.available());
+
+                // AASX 파일 처리
                 List<String> jsonResults = aasxFileDeserializer.deserializeAASXFile(inputStream);
 
-                // 변환된 JSON 결과가 있으면 결과 리스트에 추가
+                // 변환된 JSON 결과 확인
                 boolean isEmpty = jsonResults.isEmpty();
                 boolean containsFailure = jsonResults.stream()
                         .anyMatch(result -> result.contains("실패"));
@@ -76,7 +84,6 @@ public class FileUploadService {
         return results;
     }
 
-    // 업로드된 파일 목록을 반환
     public List<String> getUploadedFiles() {
         return new ArrayList<>(uploadedFileNames);
     }
