@@ -19,6 +19,7 @@
             "mainClass": "com.aasx.transformer.TransformerApplication",
             "projectName": "transformer",
             "args": "",
+            "/vmArgs": "-Xmx4g",
             "envFile": "${workspaceFolder}/.env"
         }
     ]

@@ -14,7 +14,7 @@ import java.util.List;
 public class FileUploadController {
 
     @Autowired
-    private FileUploadService fileUploadService;  // 필드 주입 방식
+    private FileUploadService fileUploadService; 
 
     // 여러 개의 파일 업로드
     @PostMapping("/aasx")

@@ -31,11 +31,10 @@ public class AASXFileDeserializer {
             Environment environment;
             while ((environment = deserializer.read()) != null) {
                 try {
-                    log.info("Environment 객체 읽기 성공: {}", environment);
+                    // log.info("Environment 객체 읽기 성공")
 
                     // Environment 객체를 JSON으로 변환
                     String json = convertEnvironmentToJson(environment);
-                    log.info("JSON 변환 완료: {}", json);
                     jsonResults.add(json);
                 } catch (Exception e) {
                     log.error("환경 객체 처리 중 오류 발생: {}", e.getMessage());
@@ -43,7 +42,9 @@ public class AASXFileDeserializer {
                 }
             }
 
-            log.info("AASX 파일 JSON 변환 완료");
+            // JSON 배열 형식으로 출력
+            log.info("변환 완료 - 변환된 JSON 객체: {}", jsonResults);
+
         } catch (Exception e) {
             log.error("AASX 파일 변환 실패: {}", e.getMessage());
             jsonResults.add("AASX 파일 변환 실패: " + e.getMessage());
@@ -56,7 +57,7 @@ public class AASXFileDeserializer {
         try {
             JsonSerializer jsonSerializer = new JsonSerializer();
             String json = jsonSerializer.write(environment);  // JSON 문자열로 변환하여 반환
-            log.info("convertEnvironmentToJson - json: {}", json);
+            // log.info("convertEnvironmentToJson - json: {}", json);
             return json;
         } catch (Exception e) {
             log.error("JSON 변환 실패: {}", e.getMessage());
@@ -64,3 +65,4 @@ public class AASXFileDeserializer {
         }
     }
 }
+
