@@ -13,7 +13,7 @@ export const uploadFile = async (formData: FormData) => {
         headers: { "Content-Type": "multipart/form-data" },
       }
     );
-
+    console.log(response);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {

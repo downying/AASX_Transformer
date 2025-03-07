@@ -40,9 +40,19 @@ public class FileUploadService {
             try {
                 String filePath = uploadPath + File.separator + file.getOriginalFilename();
                 File destFile = new File(filePath);
+
+                // upload 폴더가 없으면 생성
+                if (uploadPath != null && !uploadPath.isEmpty()) {
+                    File uploadDir = new File(uploadPath);
+                    if (!uploadDir.exists()) {
+                        uploadDir.mkdirs(); 
+                        log.info("디렉토리 생성: {}", uploadPath);
+                    } else {
+                        log.info("디렉토리 존재");
+                    }
+                }
                 
                 // 파일을 실제로 디스크에 저장
-                Files.createDirectories(Paths.get(uploadPath)); // 디렉토리 생성
                 try (FileOutputStream fos = new FileOutputStream(destFile)) {
                     fos.write(file.getBytes());
                 }
@@ -55,22 +65,14 @@ public class FileUploadService {
                 InputStream inputStream = file.getInputStream();
 
                 // 파일 스트림 크기 디버깅
-                log.info("파일 스트림 크기: {}", inputStream.available());
+                // log.info("파일 스트림 크기: {}", inputStream.available());
 
                 // AASX 파일 처리
-                List<String> jsonResults = aasxFileDeserializer.deserializeAASXFile(inputStream);
+                String jsonResult = aasxFileDeserializer.deserializeAASXFile(inputStream);
 
                 // 변환된 JSON 결과 확인
-                boolean isEmpty = jsonResults.isEmpty();
-                boolean containsFailure = jsonResults.stream()
-                        .anyMatch(result -> result.contains("실패"));
-
-                if (isEmpty || containsFailure) {
-                    log.error("AASX 파일 변환 실패: {}", file.getOriginalFilename());
-                    results.add("변환 실패: " + file.getOriginalFilename());
-                } else {
-                    log.info("AASX 파일 변환 성공: {}", file.getOriginalFilename());
-                    results.addAll(jsonResults);
+                if (jsonResult != null) {
+                    results.add(jsonResult);
                 }
 
                 // 업로드된 파일 이름을 저장

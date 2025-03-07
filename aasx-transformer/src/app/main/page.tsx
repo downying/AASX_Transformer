@@ -81,7 +81,7 @@ const MainPage = () => {
 
     try {
       const response = await uploadFile(formData);
-      console.log("서버 응답: ", response);
+      console.log("서버 응답: ", JSON.parse(response.data[0]));
 
       alert("업로드 성공");
 
