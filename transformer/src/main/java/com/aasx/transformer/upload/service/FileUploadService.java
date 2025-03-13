@@ -1,11 +1,13 @@
 package com.aasx.transformer.upload.service;
 
+import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.aasx.transformer.deserializer.AASXFileDeserializer;
+import com.aasx.transformer.upload.dto.JsonResults;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,8 +32,8 @@ public class FileUploadService {
 
     private final List<String> uploadedFileNames = new CopyOnWriteArrayList<>();
 
-    public List<String> uploadFiles(MultipartFile[] files) {
-        List<String> results = new ArrayList<>();
+    public List<Environment> uploadFiles(MultipartFile[] files) {
+        List<Environment> results = new ArrayList<>();
 
         for (MultipartFile file : files) {
             log.info("업로드된 파일 이름: {}", file.getOriginalFilename());
@@ -68,11 +70,16 @@ public class FileUploadService {
                 // log.info("파일 스트림 크기: {}", inputStream.available());
 
                 // AASX 파일 처리
-                String jsonResult = aasxFileDeserializer.deserializeAASXFile(inputStream);
+                // JsonResults jsonResults = aasxFileDeserializer.deserializeAASXFile(inputStream);
+                Environment environment = aasxFileDeserializer.deserializeAASXFile(inputStream);
 
                 // 변환된 JSON 결과 확인
-                if (jsonResult != null) {
-                    results.add(jsonResult);
+                /* if (jsonResults != null) {
+                    results.add(jsonResults);
+                } */
+
+                if (environment != null) {
+                    results.add(environment);
                 }
 
                 // 업로드된 파일 이름을 저장
@@ -80,7 +87,6 @@ public class FileUploadService {
 
             } catch (Exception e) {
                 log.error("파일 변환 중 오류 발생: {}", e.getMessage());
-                results.add("파일 변환 실패: " + file.getOriginalFilename());
             }
         }
         return results;

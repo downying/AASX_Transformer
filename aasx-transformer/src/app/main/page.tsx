@@ -15,7 +15,8 @@ const MainPage = () => {
   // drag and drop
   const [isDragging, setIsDragging] = useState(false);
   // 업로드된 파일의 이름 목록
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]); 
+  // const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   // 파일 선택 input을 참조하기 위한 ref
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -81,15 +82,13 @@ const MainPage = () => {
 
     try {
       const response = await uploadFile(formData);
-      console.log("서버 응답: ", JSON.parse(response.data[0]));
+      console.log("서버 응답: ", response);
 
       alert("업로드 성공");
 
       // 업로드 성공 후, 업로드된 파일 목록에 새로 업로드한 파일들 추가
-      setUploadedFiles(prevFiles => [
-        ...prevFiles,
-        ...selectedFiles.map(file => file.name)
-      ]);
+      // setUploadedFiles((prevFiles) => [...prevFiles, ...selectedFiles.map(file => file.name)]);
+      setUploadedFiles((prevFiles) => [...prevFiles, ...response]);
 
       // 업로드 후 selectedFiles 비우기
       setSelectedFiles([]);
@@ -100,15 +99,29 @@ const MainPage = () => {
   };
 
   // 파일 선택을 위한 클릭 이벤트 처리
-  const handleFileClick = () => {
+  const handleFileClick = (event: React.MouseEvent) => {
+    event.stopPropagation(); // 클릭 이벤트 전파 막기
     if (fileInputRef.current) {
-      fileInputRef.current.click(); // 파일 선택 input을 클릭하게 만듦
+      fileInputRef.current.click(); // 파일 선택 창을 클릭하게 만듦
     }
   };
+  
+  // 파일 삭제 기능
+  const handleDeleteFile = (index: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // 삭제 버튼 클릭 시 파일 선택창이 뜨지 않도록 방지
+  
+    // 선택한 파일을 삭제
+    setSelectedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+    
+    // 삭제 후, 선택창이 뜨지 않도록 함
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";  // 삭제 후 파일 입력 초기화
+    }
+  };
+  
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
-      {/* 전체를 하나의 div로 묶기 */}
       <div className="w-full max-w-4xl">
         {/* 홈으로 돌아가는 링크 */}
         <div className="flex items-start mb-4">
@@ -132,8 +145,7 @@ const MainPage = () => {
           {/* 업로드 영역 */}
           <CardContent>
             <div
-              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl ${isDragging ? "border-blue-500" : ""
-                }`}
+              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl ${isDragging ? "border-blue-500" : ""}`}
               onClick={handleFileClick}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -149,13 +161,19 @@ const MainPage = () => {
                 className="hidden mb-4"
                 multiple
               />
-              {/* 선택된 파일 정보 표시 */}
               {selectedFiles.length > 0 && (
                 <div className="mt-4 mb-8 text-center">
                   <p className="text-lg text-gray-700">Selected Files:</p>
                   {selectedFiles.map((file, index) => (
-                    <div key={index} className="text-gray-500">
-                      {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                    <div key={index} className="flex items-center justify-between text-gray-500 pb-3">
+                      <span>{file.name} ({(file.size / 1024).toFixed(2)} KB)</span>
+                      <Button
+                        variant="destructive"
+                        className="ml-2"
+                        onClick={(event) => handleDeleteFile(index, event)} // 삭제 버튼은 삭제만 실행
+                      >
+                        삭제
+                      </Button>
                     </div>
                   ))}
                 </div>

@@ -5,6 +5,9 @@ import org.eclipse.digitaltwin.aas4j.v3.dataformat.json.JsonSerializer;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.xml.XmlDeserializer;
 import org.springframework.stereotype.Service;
+
+import com.aasx.transformer.upload.dto.JsonResults;
+
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -14,9 +17,10 @@ import java.io.InputStream;
 @Service
 public class AASXFileDeserializer {
 
-    // AASX 파일을 읽고 XML을 JSON으로 변환
-    public String deserializeAASXFile(InputStream inputStream) {
-        String jsonResult = null;
+    // AASX 파일을 읽음
+    public Environment   deserializeAASXFile(InputStream inputStream) {
+        Environment environment = null;
+        // String jsonResult = null;
         try {
             log.info("AASX 파일 Deserializer 시작");
 
@@ -27,10 +31,15 @@ public class AASXFileDeserializer {
             AASXDeserializer deserializer = new AASXDeserializer(xmlDeserializer, inputStream);
 
             // Environment 객체 읽기
-            Environment environment = deserializer.read();
+            environment = deserializer.read();
 
             // Environment 객체를 JSON으로 변환
-            jsonResult = convertEnvironmentToJson(environment).replaceAll("[\\r\\n]+|\"", "");
+            // jsonResult = convertEnvironmentToJson(environment);
+
+            // 줄 바꿈 문자를 운영체제에 맞게 처리
+           /*  if (jsonResult != null) {
+                jsonResult = jsonResult.replaceAll("\\R", "");
+            } */
 
         } catch (Exception e) {
             log.error("AASX 파일 변환 실패: {}", e.getMessage());
@@ -44,7 +53,11 @@ public class AASXFileDeserializer {
                 log.error("InputStream 종료 중 오류 발생: {}", e.getMessage());
             }
         }
-        return jsonResult;
+
+        // JSON 결과를 JsonResults 객체에 담아서 반환
+        // return new JsonResults(jsonResult);
+
+        return environment;
     }
 
     // Environment 객체를 JSON으로 변환

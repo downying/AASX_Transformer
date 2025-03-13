@@ -3,10 +3,14 @@ package com.aasx.transformer.upload.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.aasx.transformer.upload.dto.JsonResults;
 import com.aasx.transformer.upload.service.FileUploadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
+
+import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 
 @Slf4j
 @RestController
@@ -18,9 +22,9 @@ public class FileUploadController {
 
     // 여러 개의 파일 업로드
     @PostMapping("/aasx")
-    public ResponseEntity<List<String>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
+    public ResponseEntity<List<Environment>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         log.info("컨트롤러 - 요청된 파일 개수: {}", files.length);
-        List<String> uploadResults = fileUploadService.uploadFiles(files);
+        List<Environment> uploadResults = fileUploadService.uploadFiles(files);
         return ResponseEntity.ok(uploadResults);
     }
 
@@ -31,3 +35,4 @@ public class FileUploadController {
         return ResponseEntity.ok(files);
     }
 }
+
