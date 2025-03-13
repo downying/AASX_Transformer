@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { uploadFile } from "@/lib/api/fileUpload";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const MainPage = () => {
-
+  const router = useRouter();
   // selectedFile : 사용자가 선택한 파일을 저장
   // setSelectedFile : 파일을 업데이트
   // 초깃값은 null, 파일이 선택되면 파일 객체가 저장
@@ -15,7 +16,6 @@ const MainPage = () => {
   // drag and drop
   const [isDragging, setIsDragging] = useState(false);
   // 업로드된 파일의 이름 목록
-  // const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   // 파일 선택 input을 참조하기 위한 ref
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -64,7 +64,7 @@ const MainPage = () => {
     if (selectedFiles.length === 0 && fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }, [selectedFiles]);
+  }, [selectedFiles]); 
 
   // 파일 업로드
   const handleUpload = async () => {
@@ -86,12 +86,11 @@ const MainPage = () => {
 
       alert("업로드 성공");
 
-      // 업로드 성공 후, 업로드된 파일 목록에 새로 업로드한 파일들 추가
-      // setUploadedFiles((prevFiles) => [...prevFiles, ...selectedFiles.map(file => file.name)]);
-      setUploadedFiles((prevFiles) => [...prevFiles, ...response]);
+      // 선택한 파일 목록 초기화
+      setSelectedFiles([]); // 업로드 완료 후 초기화
 
-      // 업로드 후 selectedFiles 비우기
-      setSelectedFiles([]);
+      // /transformer 페이지로 이동
+      router.push("/transformer");
     } catch (error) {
       console.error("업로드 오류: ", error);
       alert("업로드 실패");
@@ -105,20 +104,14 @@ const MainPage = () => {
       fileInputRef.current.click(); // 파일 선택 창을 클릭하게 만듦
     }
   };
-  
+
   // 파일 삭제 기능
   const handleDeleteFile = (index: number, event: React.MouseEvent) => {
     event.stopPropagation(); // 삭제 버튼 클릭 시 파일 선택창이 뜨지 않도록 방지
-  
+
     // 선택한 파일을 삭제
     setSelectedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
-    
-    // 삭제 후, 선택창이 뜨지 않도록 함
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";  // 삭제 후 파일 입력 초기화
-    }
   };
-  
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">

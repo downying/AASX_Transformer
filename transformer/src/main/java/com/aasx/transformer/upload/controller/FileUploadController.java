@@ -4,7 +4,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.aasx.transformer.upload.dto.JsonResults;
 import com.aasx.transformer.upload.service.FileUploadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,11 +27,12 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadResults);
     }
 
-    // 업로드된 파일 목록 조회
-    @GetMapping("/files")
+    // 업로드된 파일 이름 조회
+    @GetMapping("/uploadedFileNames")
     public ResponseEntity<List<String>> listUploadedFiles() {
-        List<String> files = fileUploadService.getUploadedFiles();
-        return ResponseEntity.ok(files);
+        List<String> uploadedFileNames = fileUploadService.getUploadedFiles();
+        log.info("컨트롤러 - 업로드된 파일 이름 조회: {}", uploadedFileNames);
+        return ResponseEntity.ok(uploadedFileNames);
     }
 }
 

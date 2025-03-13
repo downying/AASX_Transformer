@@ -7,15 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.aasx.transformer.deserializer.AASXFileDeserializer;
-import com.aasx.transformer.upload.dto.JsonResults;
-
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -34,8 +31,11 @@ public class FileUploadService {
 
     public List<Environment> uploadFiles(MultipartFile[] files) {
         List<Environment> results = new ArrayList<>();
+        uploadedFileNames.clear(); // 기존 파일 목록 초기화
 
         for (MultipartFile file : files) {
+            String fileName = file.getOriginalFilename();
+            
             log.info("업로드된 파일 이름: {}", file.getOriginalFilename());
             log.info("업로드된 파일 크기: {}", file.getSize());
 
@@ -83,7 +83,7 @@ public class FileUploadService {
                 }
 
                 // 업로드된 파일 이름을 저장
-                uploadedFileNames.add(filePath);
+                uploadedFileNames.add(fileName);
 
             } catch (Exception e) {
                 log.error("파일 변환 중 오류 발생: {}", e.getMessage());

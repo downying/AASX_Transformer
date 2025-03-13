@@ -1,12 +1,10 @@
 package com.aasx.transformer.deserializer;
 
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.AASXDeserializer;
-import org.eclipse.digitaltwin.aas4j.v3.dataformat.json.JsonSerializer;
+// import org.eclipse.digitaltwin.aas4j.v3.dataformat.json.JsonSerializer;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.xml.XmlDeserializer;
 import org.springframework.stereotype.Service;
-
-import com.aasx.transformer.upload.dto.JsonResults;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,7 +59,7 @@ public class AASXFileDeserializer {
     }
 
     // Environment 객체를 JSON으로 변환
-    private String convertEnvironmentToJson(Environment environment) {
+    /* private String convertEnvironmentToJson(Environment environment) {
         try {
             JsonSerializer jsonSerializer = new JsonSerializer();
             return jsonSerializer.write(environment);  // JSON 문자열로 변환하여 반환
@@ -69,5 +67,5 @@ public class AASXFileDeserializer {
             log.error("JSON 변환 실패: {}", e.getMessage());
             return "JSON 변환 실패: " + e.getMessage();
         }
-    }
+    } */
 }
