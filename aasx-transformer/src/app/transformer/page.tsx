@@ -4,30 +4,48 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { listUploadedFiles } from "@/lib/api/fileUpload";
+import { listUploadedFiles, getReferencedFilePaths } from "@/lib/api/fileUpload";
 
 const TransformerPage = () => {
     const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+    const [referencedPaths, setReferencedPaths] = useState<string[]>([]);
 
-    // 파일 이름 가져오기
+    // 파일 목록 가져오기
     useEffect(() => {
-        // 파일 목록을 가져오는 API 호출
         const loadFiles = async () => {
             try {
                 const files = await listUploadedFiles(); // 비동기 API 호출
-                setUploadedFiles(files);
+                setUploadedFiles(files); // 파일 상태 업데이트
             } catch (error) {
                 console.error("파일 목록을 가져오는 중 오류 발생:", error);
             }
         };
 
         loadFiles();
-    }, []);
+    }, []);  // 빈 배열을 넣어 처음 마운트될 때만 실행
 
-    // 변환
-    const handleTransform = () => {
-        alert("파일 변환을 시작합니다.");
-        // 변환 API 호출 로직 추가 가능
+    // AASX 파일 경로 가져오기
+    const handleGetReferencedPaths = async () => {
+        try {
+            const allReferencedPaths: string[] = [];
+            
+            for (const file of uploadedFiles) {
+                const paths = await getReferencedFilePaths(file);
+                
+                // paths가 배열이 아닐 경우 빈 배열로 처리
+                if (Array.isArray(paths)) {
+                    allReferencedPaths.push(...paths);
+                } else {
+                    console.warn(`파일 ${file}에서 반환된 경로가 배열이 아닙니다.`, paths);
+                }
+            }
+
+            setReferencedPaths(allReferencedPaths);  // 참조된 파일 경로 상태 업데이트
+            console.log("All Referenced Paths:", allReferencedPaths); // 콘솔에 한 번만 출력
+
+        } catch (error) {
+            console.error("파일 경로를 가져오는 중 오류 발생:", error);
+        }
     };
 
     return (
@@ -66,7 +84,27 @@ const TransformerPage = () => {
                                 <p className="text-center text-gray-500">No files uploaded.</p>
                             )}
                         </div>
-                        <Button onClick={handleTransform} variant="default" className="mt-4 w-full">
+                        <Button
+                            onClick={handleGetReferencedPaths}  // 버튼 클릭 시 모든 파일에 대해 경로를 한 번만 가져옴
+                            variant="default"
+                            className="mt-4 w-full">
+                            Get Referenced Paths for All Files
+                        </Button>
+
+                        {referencedPaths.length > 0 && (
+                            <div className="mt-4 text-center">
+                                <p className="text-lg text-gray-700 mb-4">Referenced Paths:</p>
+                                <ul className="text-gray-600 space-y-2">
+                                    {referencedPaths.map((path, index) => (
+                                        <li key={index} className="text-lg">
+                                            {path}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <Button onClick={() => alert("파일 변환을 시작합니다.")} variant="default" className="mt-4 w-full">
                             Transform
                         </Button>
                     </CardContent>
