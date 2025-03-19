@@ -8,45 +8,35 @@ import { listUploadedFiles, getReferencedFilePaths } from "@/lib/api/fileUpload"
 
 const TransformerPage = () => {
     const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-    const [referencedPaths, setReferencedPaths] = useState<string[]>([]);
+    const [referencedPaths, setReferencedPaths] = useState<{ [key: string]: string[] }>({});
 
     // 파일 목록 가져오기
     useEffect(() => {
         const loadFiles = async () => {
             try {
-                const files = await listUploadedFiles(); // 비동기 API 호출
-                setUploadedFiles(files); // 파일 상태 업데이트
+                const files = await listUploadedFiles();
+                setUploadedFiles(files);
             } catch (error) {
                 console.error("파일 목록을 가져오는 중 오류 발생:", error);
             }
         };
 
         loadFiles();
-    }, []);  // 빈 배열을 넣어 처음 마운트될 때만 실행
+    }, []);
 
-    // AASX 파일 경로 가져오기
-    const handleGetReferencedPaths = async () => {
-        try {
-            const allReferencedPaths: string[] = [];
-            
-            for (const file of uploadedFiles) {
-                const paths = await getReferencedFilePaths(file);
-                
-                // paths가 배열이 아닐 경우 빈 배열로 처리
-                if (Array.isArray(paths)) {
-                    allReferencedPaths.push(...paths);
-                } else {
-                    console.warn(`파일 ${file}에서 반환된 경로가 배열이 아닙니다.`, paths);
-                }
+    // AASX 파일에서 참조된 파일 경로 가져오기
+    useEffect(() => {
+        const loadReferencedPaths = async () => {
+            try {
+                const paths = await getReferencedFilePaths();
+                setReferencedPaths(paths);
+            } catch (error) {
+                console.error("참조된 파일 경로를 가져오는 중 오류 발생:", error);
             }
+        };
 
-            setReferencedPaths(allReferencedPaths);  // 참조된 파일 경로 상태 업데이트
-            console.log("All Referenced Paths:", allReferencedPaths); // 콘솔에 한 번만 출력
-
-        } catch (error) {
-            console.error("파일 경로를 가져오는 중 오류 발생:", error);
-        }
-    };
+        loadReferencedPaths();
+    }, []);
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
@@ -68,6 +58,7 @@ const TransformerPage = () => {
                         </p>
                     </CardHeader>
                     <CardContent>
+                        {/* 업로드된 파일 목록 */}
                         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl">
                             {uploadedFiles.length > 0 ? (
                                 <div className="mt-4 text-center">
@@ -84,23 +75,23 @@ const TransformerPage = () => {
                                 <p className="text-center text-gray-500">No files uploaded.</p>
                             )}
                         </div>
-                        <Button
-                            onClick={handleGetReferencedPaths}  // 버튼 클릭 시 모든 파일에 대해 경로를 한 번만 가져옴
-                            variant="default"
-                            className="mt-4 w-full">
-                            Get Referenced Paths for All Files
-                        </Button>
 
-                        {referencedPaths.length > 0 && (
+                        {/* 참조된 파일 경로 목록 */}
+                        {Object.keys(referencedPaths).length > 0 && (
                             <div className="mt-4 text-center">
-                                <p className="text-lg text-gray-700 mb-4">Referenced Paths:</p>
-                                <ul className="text-gray-600 space-y-2">
-                                    {referencedPaths.map((path, index) => (
-                                        <li key={index} className="text-lg">
-                                            {path}
-                                        </li>
-                                    ))}
-                                </ul>
+                                <p className="text-lg text-gray-700 mb-4">Referenced Paths by File:</p>
+                                {Object.keys(referencedPaths).map(fileName => (
+                                    <div key={fileName} className="mb-4">
+                                        <h3 className="font-bold">{fileName}</h3>
+                                        <ul className="text-gray-600 space-y-2">
+                                            {referencedPaths[fileName].map((path, idx) => (
+                                                <li key={idx} className="text-lg">
+                                                    {path}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
                             </div>
                         )}
 

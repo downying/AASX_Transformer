@@ -40,30 +40,12 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadedFileNames);
     }
 
-    // 최근 업로드된 AASX 파일에서 참조된 파일 경로 조회
-    @PostMapping("/aasx/referenced-paths")
-    public ResponseEntity<List<String>> extractFilesFromAASX(@RequestParam("file") MultipartFile file) {
-        try (InputStream inputStream = file.getInputStream()) {
-            List<String> filePaths = fileUploadService.extractFilePathsFromAASX(inputStream);
-            return ResponseEntity.ok(filePaths);
-        } catch (IOException e) {
-            return ResponseEntity.status(500).body(null);  // 예외 발생 시 500 에러 반환
-        }
+    // 업로드된 AASX 파일에서 참조된 파일 경로 조회
+    @GetMapping("/aasx/referenced-paths")
+    public ResponseEntity<Map<String, List<String>>> getReferencedFilePaths() {
+        Map<String, List<String>> filePathsMap = fileUploadService.getReferencedFilePaths();
+        log.info("컨트롤러 - 파일별 참조된 파일 경로 조회: {}", filePathsMap);
+        return ResponseEntity.ok(filePathsMap);
     }
 
-    // AASX 파일에서 특정 파일을 추출하여 반환
-  /*   @PostMapping("/aasx/extract-file")
-    public ResponseEntity<byte[]> extractFileFromAASX(@RequestParam("file") MultipartFile file,
-                                                      @RequestParam("filePath") String filePath) {
-        log.info("AASX 파일에서 특정 파일 추출 요청: {} (경로: {})", file.getOriginalFilename(), filePath);
-        InMemoryFile extractedFile = fileUploadService.getFileFromAASX(file, filePath);
-
-        if (extractedFile != null) {
-            return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"" + file.getOriginalFilename() + "\"")
-                .body(extractedFile.getFileContent());
-        }
-
-        return ResponseEntity.notFound().build();
-    } */
 }

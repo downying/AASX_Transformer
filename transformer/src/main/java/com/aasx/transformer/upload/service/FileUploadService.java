@@ -35,7 +35,8 @@ public class FileUploadService {
     private String uploadPath;
 
     private final List<String> uploadedFileNames = new CopyOnWriteArrayList<>();
-    private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>(); // AASX 파일에서 읽은 환경을 저장
+    // AASX 파일에서 읽은 환경을 저장
+    private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>(); 
 
     // 기존의 파일 업로드 메소드
     public List<Environment> uploadFiles(MultipartFile[] files) {
@@ -93,19 +94,16 @@ public class FileUploadService {
         return new ArrayList<>(uploadedFileNames);
     }
 
-    // AASX 파일에서 참조된 파일 경로 목록 추출
-    public List<String> extractFilePathsFromAASX(InputStream inputStream) {
-        Environment environment = aasxFileDeserializer.deserializeAASXFile(inputStream);
-        return aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
+    // 업로드된 AASX 파일에서 참조된 파일 경로 조회
+    public Map<String, List<String>> getReferencedFilePaths() {
+        Map<String, List<String>> filePathsMap = new HashMap<>();
+        for (int i = 0; i < uploadedFileNames.size(); i++) {
+            String fileName = uploadedFileNames.get(i);
+            Environment environment = uploadedEnvironments.get(i);
+            List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
+            filePathsMap.put(fileName, paths);
+        }
+        return filePathsMap;
     }
 
-    // AASX 파일에서 특정 파일을 추출하여 반환
-   /*  public InMemoryFile getFileFromAASX(MultipartFile file, String filePath) {
-        try (InputStream inputStream = file.getInputStream()) {
-            return aasxFileDeserializer.readFileFromAASX(inputStream, filePath);
-        } catch (Exception e) {
-            log.error("AASX 파일에서 특정 파일 읽기 실패: {}", e.getMessage());
-            return null;
-        }
-    } */
 }
