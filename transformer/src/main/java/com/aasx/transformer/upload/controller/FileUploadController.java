@@ -41,11 +41,19 @@ public class FileUploadController {
     }
 
     // 업로드된 AASX 파일에서 참조된 파일 경로 조회
-    @GetMapping("/aasx/referenced-paths")
+    /* @GetMapping("/aasx/referenced-paths")
     public ResponseEntity<Map<String, List<String>>> getReferencedFilePaths() {
         Map<String, List<String>> filePathsMap = fileUploadService.getReferencedFilePaths();
         log.info("컨트롤러 - 파일별 참조된 파일 경로 조회: {}", filePathsMap);
         return ResponseEntity.ok(filePathsMap);
+    } */
+
+    // InMemoryFile로 변환
+    @GetMapping("/aasx/referenced-inmemoryfiles")
+    public ResponseEntity<Map<String, List<InMemoryFile>>> getReferencedInMemoryFiles() {
+        Map<String, List<InMemoryFile>> inMemoryFilesMap = fileUploadService.getInMemoryFilesFromReferencedPaths();
+        // log.info("컨트롤러 - 파일별 InMemoryFile 목록 조회: {}", inMemoryFilesMap);
+        return ResponseEntity.ok(inMemoryFilesMap);
     }
 
 }

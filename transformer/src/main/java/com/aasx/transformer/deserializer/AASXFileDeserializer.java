@@ -19,19 +19,21 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @Service
 public class AASXFileDeserializer {
 
-    // AASX 파일을 읽음
-    public Environment   deserializeAASXFile(InputStream inputStream) {
+    // AASX 파일을 읽고 Environment 객체로 변환
+    public Environment deserializeAASXFile(InputStream inputStream) {
         Environment environment = null;
 
-        try {
-            log.info("AASX 파일 Deserializer 시작");
+        log.info("AASX 파일 Deserializer 시작");
 
+        // try-with-resources를 사용하여 InputStream 자동 종료 처리
+        try (InputStream is = inputStream) {
             // XMLDeserializer 인스턴스 생성
             XmlDeserializer xmlDeserializer = new XmlDeserializer();
 
@@ -40,37 +42,11 @@ public class AASXFileDeserializer {
 
             // Environment 객체 읽기
             environment = deserializer.read();
-            // log.info("deserializeAASXFile에서 반환된 environment: {}", environment);
-
         } catch (Exception e) {
             log.error("AASX 파일 변환 실패: {}", e.getMessage());
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close(); // InputStream 종료
-                    log.info("InputStream이 성공적으로 종료되었습니다.");
-                }
-            } catch (IOException e) {
-                log.error("InputStream 종료 중 오류 발생: {}", e.getMessage());
-            }
         }
-
-        // JSON 결과를 JsonResults 객체에 담아서 반환
-        // return new JsonResults(jsonResult);
-
         return environment;
     }
-
-    // Environment 객체를 JSON으로 변환
-    /* private String convertEnvironmentToJson(Environment environment) {
-        try {
-            JsonSerializer jsonSerializer = new JsonSerializer();
-            return jsonSerializer.write(environment);  // JSON 문자열로 변환하여 반환
-        } catch (Exception e) {
-            log.error("JSON 변환 실패: {}", e.getMessage());
-            return "JSON 변환 실패: " + e.getMessage();
-        }
-    } */
 
     // AASX 파일에서 참조된 파일 경로 추출
     public List<String> parseReferencedFilePathsFromAASX(Environment environment) {
@@ -78,17 +54,17 @@ public class AASXFileDeserializer {
 
         if (environment == null) {
             log.error("환경 객체가 null입니다.");
-            return paths; 
+            return paths;
         }
 
         // log.info("environment {} ", environment);
 
         // 기본 썸네일 경로 추출
         environment.getAssetAdministrationShells().stream()
-            .filter(aas -> aas.getAssetInformation() != null
-                && aas.getAssetInformation().getDefaultThumbnail() != null
-                && aas.getAssetInformation().getDefaultThumbnail().getPath() != null) 
-            .forEach(aas -> paths.add(aas.getAssetInformation().getDefaultThumbnail().getPath()));
+                .filter(aas -> aas.getAssetInformation() != null
+                        && aas.getAssetInformation().getDefaultThumbnail() != null
+                        && aas.getAssetInformation().getDefaultThumbnail().getPath() != null)
+                .forEach(aas -> paths.add(aas.getAssetInformation().getDefaultThumbnail().getPath()));
 
         // 서브모델 내부의 File 객체에서 파일 경로 추출
         new AssetAdministrationShellElementWalkerVisitor() {
@@ -105,9 +81,28 @@ public class AASXFileDeserializer {
     }
 
     // InMemoryFile로 변환
-    /* public InMemoryFile readFile(OPCPackage aasxRoot, String filePath) throws InvalidFormatException, IOException {
-        PackagePart part = aasxRoot.getPart(PackagingURIHelper.createPartName(AASXUtils.removeFilePartOfURI(filePath)));
-        InputStream stream = part.getInputStream();
-        return new InMemoryFile(stream.readAllBytes(), filePath);
-    } */
+    public List<InMemoryFile> readFiles(OPCPackage aasxRoot, List<String> paths) throws InvalidFormatException, IOException {
+        List<InMemoryFile> inMemoryFiles = new ArrayList<>();
+        for (String path : paths) {
+            // 경로를 정제(조정)
+            String adjustedPath = AASXUtils.removeFilePartOfURI(path);
+            
+            if (adjustedPath == null || adjustedPath.isEmpty()) {
+                continue;
+            }
+            
+            PackagePart part = aasxRoot.getPart(PackagingURIHelper.createPartName(adjustedPath));
+            try (InputStream stream = part.getInputStream()) {
+                byte[] fileData = stream.readAllBytes();
+                // 단일 파일 경로 문자열을 인자로 전달하여 InMemoryFile 객체 생성
+                InMemoryFile inMemoryFile = new InMemoryFile(fileData, path);
+                inMemoryFiles.add(inMemoryFile);
+            }catch (Exception e) {
+                log.error("InMemoryFile 변환 실패. path={}, adjustedPath={}, 원인: {}", path, adjustedPath, e.getMessage(), e);
+            }
+        }
+        return inMemoryFiles;
+    }
+    
+    
 }

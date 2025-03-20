@@ -90,20 +90,58 @@ public class FileUploadService {
         return results;
     }
 
+    // 업로드된 파일 이름 조회
     public List<String> getUploadedFiles() {
         return new ArrayList<>(uploadedFileNames);
     }
 
     // 업로드된 AASX 파일에서 참조된 파일 경로 조회
-    public Map<String, List<String>> getReferencedFilePaths() {
+   /*  public Map<String, List<String>> getReferencedFilePaths() {
         Map<String, List<String>> filePathsMap = new HashMap<>();
         for (int i = 0; i < uploadedFileNames.size(); i++) {
             String fileName = uploadedFileNames.get(i);
             Environment environment = uploadedEnvironments.get(i);
+
+            // Environment에서 참조된 파일 경로들 추출
             List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
             filePathsMap.put(fileName, paths);
         }
         return filePathsMap;
-    }
+    } */
 
+    // InMemoryFile로 변환
+    public Map<String, List<InMemoryFile>> getInMemoryFilesFromReferencedPaths() {
+        Map<String, List<InMemoryFile>> inMemoryFilesMap = new HashMap<>();
+
+        // 업로드된 파일 목록과 environment 목록은 같은 인덱스를 가짐
+        for (int i = 0; i < uploadedFileNames.size(); i++) {
+            String fileName = uploadedFileNames.get(i);
+            Environment environment = uploadedEnvironments.get(i);
+
+            // Environment에서 참조된 파일 경로들 추출
+            List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
+
+            if (paths.isEmpty()) {
+                // 참조 경로가 없다면 비어있는 리스트 매핑
+                inMemoryFilesMap.put(fileName, Collections.emptyList());
+                continue;
+            }
+
+            // 실제 디스크에 저장된 AASX 파일 열기
+            String aasxFilePath = uploadPath + File.separator + fileName;
+            File aasxFile = new File(aasxFilePath);
+
+            // OPCPackage로 AASX 내부 리소스를 읽어옴
+            try (OPCPackage aasxRoot = OPCPackage.open(aasxFile)) {
+                List<InMemoryFile> inMemoryFiles = aasxFileDeserializer.readFiles(aasxRoot, paths);
+                inMemoryFilesMap.put(fileName, inMemoryFiles);
+            } catch (InvalidFormatException | IOException e) {
+                log.error("AASX 내부 파일 읽기 오류 ({}): {}", fileName, e.getMessage(), e);
+                inMemoryFilesMap.put(fileName, Collections.emptyList());
+            }
+            
+        }
+
+        return inMemoryFilesMap;
+    }
 }
