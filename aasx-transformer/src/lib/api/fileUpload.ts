@@ -80,7 +80,7 @@ export const listUploadedFiles = async () => {
 }; */
 
 
-export const getReferencedInMemoryFiles = async () => {
+/* export const getReferencedInMemoryFiles = async () => {
   try {
     const response = await axios.get(
       `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/referenced-inmemoryfiles`
@@ -99,8 +99,31 @@ export const getReferencedInMemoryFiles = async () => {
     }
   }
 };
+ */
 
-export interface InMemoryFile {
-  fileContent: string; // Base64 인코딩된 파일 데이터
+/* export interface InMemoryFile {
+  fileContent: Uint8Array ; // InMemoryFile 데이터: 바이트 배열
   path: string;    // AASX 내 파일 경로 (/aasx/files/... 등)
-}
+} */
+
+// SHA-256 해시값 조회
+export const getSHA256Hashes = async () => {
+  try {
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/sha256-hashes`
+    );
+    console.log("API - SHA256 해시 서버 응답:", response.data);
+    return response.data; // { [fileName: string]: string[] } 형식의 해시값 맵
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("서버 오류:", error.response.data);
+      throw new Error(
+        `SHA256 해시값을 가져오는 데 실패했습니다: ${error.response.data}`
+      );
+    } else {
+      console.error("요청 오류:", error);
+      throw new Error("SHA256 해시값을 가져오는 데 실패했습니다: 네트워크 오류");
+    }
+  }
+};
+

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.aasx.transformer.deserializer.AASXFileDeserializer;
+import com.aasx.transformer.deserializer.SHA256Hash;
+
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -36,7 +38,7 @@ public class FileUploadService {
 
     private final List<String> uploadedFileNames = new CopyOnWriteArrayList<>();
     // AASX 파일에서 읽은 환경을 저장
-    private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>(); 
+    private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>();
 
     // 기존의 파일 업로드 메소드
     public List<Environment> uploadFiles(MultipartFile[] files) {
@@ -96,18 +98,21 @@ public class FileUploadService {
     }
 
     // 업로드된 AASX 파일에서 참조된 파일 경로 조회
-   /*  public Map<String, List<String>> getReferencedFilePaths() {
-        Map<String, List<String>> filePathsMap = new HashMap<>();
-        for (int i = 0; i < uploadedFileNames.size(); i++) {
-            String fileName = uploadedFileNames.get(i);
-            Environment environment = uploadedEnvironments.get(i);
-
-            // Environment에서 참조된 파일 경로들 추출
-            List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
-            filePathsMap.put(fileName, paths);
-        }
-        return filePathsMap;
-    } */
+    /*
+     * public Map<String, List<String>> getReferencedFilePaths() {
+     * Map<String, List<String>> filePathsMap = new HashMap<>();
+     * for (int i = 0; i < uploadedFileNames.size(); i++) {
+     * String fileName = uploadedFileNames.get(i);
+     * Environment environment = uploadedEnvironments.get(i);
+     * 
+     * // Environment에서 참조된 파일 경로들 추출
+     * List<String> paths =
+     * aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
+     * filePathsMap.put(fileName, paths);
+     * }
+     * return filePathsMap;
+     * }
+     */
 
     // InMemoryFile로 변환
     public Map<String, List<InMemoryFile>> getInMemoryFilesFromReferencedPaths() {
@@ -139,9 +144,36 @@ public class FileUploadService {
                 log.error("AASX 내부 파일 읽기 오류 ({}): {}", fileName, e.getMessage(), e);
                 inMemoryFilesMap.put(fileName, Collections.emptyList());
             }
-            
+
         }
 
         return inMemoryFilesMap;
     }
+
+    // SHA-256 해시값 계산
+    public Map<String, List<String>> computeSHA256HashesForInMemoryFiles() {
+        Map<String, List<InMemoryFile>> inMemoryFilesMap = getInMemoryFilesFromReferencedPaths();
+        Map<String, List<String>> sha256HashesMap = new HashMap<>();
+
+        // entrySet(): 맵에 저장된 모든 키-값 쌍(각각 Map.Entry<String, List<InMemoryFile>> 타입)을 포함하는 Set을 반환
+        // Map.Entry<String, List<InMemoryFile>>: 타입
+        // 반복문으로 순회하면 각 항목(각 Entry)을 하나씩 가져옴
+        for (Map.Entry<String, List<InMemoryFile>> entry : inMemoryFilesMap.entrySet()) {
+            String fileName = entry.getKey();
+            List<InMemoryFile> inMemoryFiles = entry.getValue();
+
+            // InMemoryFile 객체의 SHA-256 해시값을 저장할 리스트를 초기화
+            List<String> fileHashes = new ArrayList<>();
+            for (InMemoryFile inMemoryFile : inMemoryFiles) {
+                // SHA256Hash 클래스의 메소드를 사용하여 해시값 계산
+                String hash = SHA256Hash.computeSHA256Hash(inMemoryFile);
+                fileHashes.add(hash);
+            }
+
+            sha256HashesMap.put(fileName, fileHashes);
+        }
+ 
+        return sha256HashesMap;
+    }
+
 }

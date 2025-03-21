@@ -56,4 +56,12 @@ public class FileUploadController {
         return ResponseEntity.ok(inMemoryFilesMap);
     }
 
+    // SHA-256 해시값 계산 
+    @GetMapping("/aasx/sha256-hashes")
+    public ResponseEntity<Map<String, List<String>>> getSHA256HashesForInMemoryFiles() {
+        Map<String, List<String>> sha256Hashes = fileUploadService.computeSHA256HashesForInMemoryFiles();
+        log.info("컨트롤러 - 파일별 SHA-256 해시값 조회: {}", sha256Hashes);
+        return ResponseEntity.ok(sha256Hashes);
+    }
+
 }
