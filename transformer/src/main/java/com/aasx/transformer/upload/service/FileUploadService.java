@@ -60,6 +60,13 @@ public class FileUploadService {
             log.info("업로드된 파일 크기: {}", file.getSize());
 
             try {
+
+                // 확장자 검사: 파일명이 .aasx로 끝나지 않으면 스킵
+                if (fileName == null || !fileName.toLowerCase().endsWith(".aasx")) {
+                    log.warn("파일이 AASX 형식이 아니므로 업로드 처리에서 제외합니다: {}", fileName);
+                    continue; // 다음 파일로 넘어감
+                }
+                
                 String filePath = uploadPath + File.separator + file.getOriginalFilename();
                 File destFile = new File(filePath);
 
