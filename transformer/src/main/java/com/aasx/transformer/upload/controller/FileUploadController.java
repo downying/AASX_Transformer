@@ -24,7 +24,7 @@ public class FileUploadController {
     @Autowired
     private FileUploadService fileUploadService;
 
-    // 여러 개의 파일 업로드
+    // ✅ 여러 개의 파일 업로드
     @PostMapping("/aasx")
     public ResponseEntity<List<Environment>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         log.info("컨트롤러 - 요청된 파일 개수: {}", files.length);
@@ -32,7 +32,7 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadResults);
     }
 
-    // 업로드된 파일 이름 조회
+    // ✅ 업로드된 파일 이름 조회
     @GetMapping("/uploadedFileNames")
     public ResponseEntity<List<String>> listUploadedFiles() {
         List<String> uploadedFileNames = fileUploadService.getUploadedFiles();
@@ -40,28 +40,47 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadedFileNames);
     }
 
-    // 업로드된 AASX 파일에서 참조된 파일 경로 조회
-    /* @GetMapping("/aasx/referenced-paths")
-    public ResponseEntity<Map<String, List<String>>> getReferencedFilePaths() {
-        Map<String, List<String>> filePathsMap = fileUploadService.getReferencedFilePaths();
-        log.info("컨트롤러 - 파일별 참조된 파일 경로 조회: {}", filePathsMap);
-        return ResponseEntity.ok(filePathsMap);
-    } */
+    // 
+    /* ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
+     * @GetMapping("/aasx/referenced-paths")
+     * public ResponseEntity<Map<String, List<String>>> getReferencedFilePaths() {
+     * Map<String, List<String>> filePathsMap =
+     * fileUploadService.getReferencedFilePaths();
+     * log.info("컨트롤러 - 파일별 참조된 파일 경로 조회: {}", filePathsMap);
+     * return ResponseEntity.ok(filePathsMap);
+     * }
+     */
 
-    // InMemoryFile로 변환
-    @GetMapping("/aasx/referenced-inmemoryfiles")
-    public ResponseEntity<Map<String, List<InMemoryFile>>> getReferencedInMemoryFiles() {
-        Map<String, List<InMemoryFile>> inMemoryFilesMap = fileUploadService.getInMemoryFilesFromReferencedPaths();
-        // log.info("컨트롤러 - 파일별 InMemoryFile 목록 조회: {}", inMemoryFilesMap);
-        return ResponseEntity.ok(inMemoryFilesMap);
-    }
+    /*
+     * ✅ InMemoryFile로 변환
+     * @GetMapping("/aasx/referenced-inmemoryfiles")
+     * public ResponseEntity<Map<String, List<InMemoryFile>>>
+     * getReferencedInMemoryFiles() {
+     * Map<String, List<InMemoryFile>> inMemoryFilesMap =
+     * fileUploadService.getInMemoryFilesFromReferencedPaths();
+     * // log.info("컨트롤러 - 파일별 InMemoryFile 목록 조회: {}", inMemoryFilesMap);
+     * return ResponseEntity.ok(inMemoryFilesMap);
+     * }
+     */
 
-    // SHA-256 해시값 계산 
+    
+    /*
+     * ✅ SHA-256 해시값 계산
+     * @GetMapping("/aasx/sha256-hashes")
+     * public ResponseEntity<Map<String, List<String>>> getSHA256HashesForInMemoryFiles() {
+     * Map<String, List<String>> sha256Hashes =
+     * fileUploadService.computeSHA256HashesForInMemoryFiles();
+     * log.info("컨트롤러 - 파일별 SHA-256 해시값 조회: {}", sha256Hashes);
+     * return ResponseEntity.ok(sha256Hashes);
+     * }
+     */
+
+    // ✅ 동일 파일 검색  
     @GetMapping("/aasx/sha256-hashes")
-    public ResponseEntity<Map<String, List<String>>> getSHA256HashesForInMemoryFiles() {
-        Map<String, List<String>> sha256Hashes = fileUploadService.computeSHA256HashesForInMemoryFiles();
-        log.info("컨트롤러 - 파일별 SHA-256 해시값 조회: {}", sha256Hashes);
-        return ResponseEntity.ok(sha256Hashes);
+    public ResponseEntity<Map<String, List<String>>> getSHA256HashesMap() {
+        Map<String, List<String>> result = fileUploadService.computeSHA256HashesForInMemoryFiles();
+        log.info("컨트롤러 - 파일별 SHA-256 해시 및 중복 파일 정보 조회: {}", result);
+        return ResponseEntity.ok(result);
     }
 
 }

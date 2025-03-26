@@ -1,7 +1,7 @@
 plugins {
 	id 'java'
 	id 'war'
-	id 'org.springframework.boot' version '3.4.3'
+	id 'org.springframework.boot' version '3.4.4'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -48,6 +48,9 @@ dependencies {
    	// OPCPackage와 관련된 Apache POI 의존성 추가
     implementation 'org.apache.poi:poi-ooxml:5.2.3'  // 필요에 따라 버전 변경
     implementation 'org.apache.poi:poi-ooxml-schemas:4.1.2'
+
+	// SHA-256 해싱
+	implementation 'commons-codec:commons-codec:1.15'
 
 }
 

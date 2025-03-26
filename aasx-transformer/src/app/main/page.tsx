@@ -64,7 +64,7 @@ const MainPage = () => {
     if (selectedFiles.length === 0 && fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }, [selectedFiles]); 
+  }, [selectedFiles]);
 
   // 파일 업로드
   const handleUpload = async () => {
@@ -163,9 +163,9 @@ const MainPage = () => {
                       <Button
                         variant="destructive"
                         className="ml-2"
-                        onClick={(event) => handleDeleteFile(index, event)} // 삭제 버튼은 삭제만 실행
+                        onClick={(event) => handleDeleteFile(index, event)} 
                       >
-                        삭제
+                        Delete
                       </Button>
                     </div>
                   ))}
