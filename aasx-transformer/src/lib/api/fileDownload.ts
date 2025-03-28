@@ -1,5 +1,31 @@
 import axios from "axios";
 
+/**
+ * 서버에서 업데이트된 Environment JSON 파일을 다운로드합니다.
+ * @param fileName 확장자를 포함한 파일 이름 (예: example.aasx)
+ */
+// downloadEnvironment.js (API 호출과 JSON 다운로드 및 처리)
+export const downloadEnvironment = async (fileName: string) => {
+    try {
+      // JSON 파일 다운로드
+      const response = await fetch(`/api/transformer/download/environment/${fileName}`);
+      const json = await response.json();
+  
+      // JSON에서 URL 추출 (예: json.file.url)
+      const downloadUrl = json.file.url;
+  
+      // URL로 파일 자동 다운로드
+      if (downloadUrl) {
+        window.location.href = downloadUrl;
+      } else {
+        console.error("URL이 포함되지 않은 JSON 파일입니다.");
+      }
+    } catch (error) {
+      console.error("환경 JSON 다운로드 중 오류 발생:", error);
+    }
+  };
+  
+
 // ✅ 파일 다운로드
 export const downloadFile = async (hash: string) => {
     try {

@@ -151,3 +151,23 @@ export const getSHA256HashesMap = async () => {
   }
 };
 
+// ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
+export const getUpdatedEnvironments = async () => {
+  try {
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/download`
+    );
+    console.log("API - 업데이트된 환경 데이터 서버 응답:", response.data);
+    return response.data; // { [fileName: string]: string[] }
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("서버 오류:", error.response.data);
+      throw new Error(
+        `업데이트된 환경 데이터를 가져오는 데 실패했습니다: ${error.response.data}`
+      );
+    } else {
+      console.error("요청 오류:", error);
+      throw new Error("업데이트된 환경 데이터를 가져오는 데 실패했습니다: 네트워크 오류");
+    }
+  }
+};

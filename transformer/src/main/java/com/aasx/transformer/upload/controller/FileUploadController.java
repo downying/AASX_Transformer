@@ -7,13 +7,15 @@ import org.springframework.web.multipart.MultipartFile;
 import com.aasx.transformer.upload.service.FileUploadService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.InMemoryFile;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 
 @Slf4j
@@ -40,8 +42,10 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadedFileNames);
     }
 
-    // 
-    /* ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
+    //
+    /*
+     * ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
+     * 
      * @GetMapping("/aasx/referenced-paths")
      * public ResponseEntity<Map<String, List<String>>> getReferencedFilePaths() {
      * Map<String, List<String>> filePathsMap =
@@ -53,6 +57,7 @@ public class FileUploadController {
 
     /*
      * ✅ InMemoryFile로 변환
+     * 
      * @GetMapping("/aasx/referenced-inmemoryfiles")
      * public ResponseEntity<Map<String, List<InMemoryFile>>>
      * getReferencedInMemoryFiles() {
@@ -63,11 +68,12 @@ public class FileUploadController {
      * }
      */
 
-    
     /*
      * ✅ SHA-256 해시값 계산
+     * 
      * @GetMapping("/aasx/sha256-hashes")
-     * public ResponseEntity<Map<String, List<String>>> getSHA256HashesForInMemoryFiles() {
+     * public ResponseEntity<Map<String, List<String>>>
+     * getSHA256HashesForInMemoryFiles() {
      * Map<String, List<String>> sha256Hashes =
      * fileUploadService.computeSHA256HashesForInMemoryFiles();
      * log.info("컨트롤러 - 파일별 SHA-256 해시값 조회: {}", sha256Hashes);
@@ -75,12 +81,15 @@ public class FileUploadController {
      * }
      */
 
-    // ✅ 동일 파일 검색  
-    @GetMapping("/aasx/sha256-hashes")
-    public ResponseEntity<Map<String, List<String>>> getSHA256HashesMap() {
-        Map<String, List<String>> result = fileUploadService.computeSHA256HashesForInMemoryFiles();
-        log.info("컨트롤러 - 파일별 SHA-256 해시 및 중복 파일 정보 조회: {}", result);
-        return ResponseEntity.ok(result);
-    }
-
+    /*
+     * ✅ 동일 파일 검색
+     * 
+     * @GetMapping("/aasx/sha256-hashes")
+     * public ResponseEntity<Map<String, List<String>>> getSHA256HashesMap() {
+     * Map<String, List<String>> result =
+     * fileUploadService.computeSHA256HashesForInMemoryFiles();
+     * log.info("컨트롤러 - 파일별 SHA-256 해시 및 중복 파일 정보 조회: {}", result);
+     * return ResponseEntity.ok(result);
+     * }
+     */
 }
