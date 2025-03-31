@@ -44,7 +44,7 @@ public class FileUploadService {
     // 업로드된 AASX 파일로부터 변환된 Environment 목록
     private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>();
 
-    // AASX 파일 업로드 및 Environment 변환
+    // ✅ AASX 파일 업로드 및 Environment 변환
     public List<Environment> uploadFiles(MultipartFile[] files) {
         List<Environment> results = new ArrayList<>();
         uploadedFileNames.clear();
@@ -99,12 +99,12 @@ public class FileUploadService {
         return results;
     }
 
-    // 업로드된 파일 이름 반환
+    // ✅ 업로드된 파일 이름 반환
     public List<String> getUploadedFiles() {
         return new ArrayList<>(uploadedFileNames);
     }
 
-    // InMemoryFile 객체 목록을 반환 (환경 내 참조된 파일 경로 처리)
+    // ✅ InMemoryFile 객체 목록을 반환 (환경 내 참조된 파일 경로 처리)
     public Map<String, List<InMemoryFile>> getInMemoryFilesFromReferencedPaths() {
         Map<String, List<InMemoryFile>> inMemoryFilesMap = new HashMap<>();
 
@@ -132,7 +132,7 @@ public class FileUploadService {
         return inMemoryFilesMap;
     }
 
-    // 동일 파일 검색 및 해시값 기반 파일 저장 후, fileName과 업데이트된 Environment를 매핑하여 반환
+    // ✅ 동일 파일 검색 및 해시값 기반 파일 저장 후, fileName과 업데이트된 Environment를 매핑하여 반환
     public Map<String, Environment> computeSHA256HashesForInMemoryFiles() {
         Map<String, Environment> updatedEnvironmentMap = new HashMap<>();
         Map<String, List<InMemoryFile>> inMemoryFilesMap = getInMemoryFilesFromReferencedPaths();
@@ -140,16 +140,15 @@ public class FileUploadService {
         for (Map.Entry<String, List<InMemoryFile>> entry : inMemoryFilesMap.entrySet()) {
             String fileName = entry.getKey();
             List<InMemoryFile> inMemoryFiles = entry.getValue();
-        
+
             int index = uploadedFileNames.indexOf(fileName);
             if (index < 0 || index >= uploadedEnvironments.size()) {
                 log.warn("해당 파일 이름에 대응하는 환경을 찾을 수 없음: {}", fileName);
                 continue;
             }
             Environment environment = uploadedEnvironments.get(index);
-        
+
             if (inMemoryFiles.isEmpty()) {
-                // 첨부파일이 없으면 File 객체의 value를 빈 문자열로 설정하거나, 해당 File 객체를 업데이트하지 않음
                 log.info("첨부파일이 없습니다. Environment의 File 객체를 업데이트하지 않습니다: {}", fileName);
             } else {
                 for (InMemoryFile inMemoryFile : inMemoryFiles) {
@@ -163,7 +162,7 @@ public class FileUploadService {
                         String newFileName = hash + extension;
                         String newFilePath = uploadPath + File.separator + newFileName;
                         File newFile = new File(newFilePath);
-        
+
                         if (!newFile.exists()) {
                             try (FileOutputStream fos = new FileOutputStream(newFile)) {
                                 fos.write(inMemoryFile.getFileContent());
@@ -172,14 +171,14 @@ public class FileUploadService {
                         } else {
                             log.info("중복 파일 발견: {} (이미 저장됨)", newFileName);
                         }
-        
+
                         // 첨부파일 다운로드 전용 URL 생성
                         String hashBasedUrl = baseDownloadUrl + "/api/transformer/download/" + hash + extension;
                         log.info("생성된 해시 기반 URL: {}", hashBasedUrl);
-        
-                        InMemoryFile updatedFile = new InMemoryFile(inMemoryFile.getFileContent(), hashBasedUrl);
-                        updateEnvironmentFilePathsToURL(environment, updatedFile);
-                        
+
+                        // 원본 첨부파일 경로(originalPath)와 새 URL(hashBasedUrl)를 전달하여 해당 File 객체만 업데이트
+                        updateEnvironmentFilePathsToURL(environment, originalPath, hashBasedUrl);
+
                     } catch (Exception e) {
                         log.error("해시 계산 중 오류 발생: {}", e.getMessage(), e);
                     }
@@ -187,21 +186,26 @@ public class FileUploadService {
             }
             updatedEnvironmentMap.put(fileName, environment);
         }
-        
+
+        // 추가: 생성된 updatedEnvironmentMap의 키 목록 로그 출력
+        log.info("업데이트된 Environment Map의 파일 이름 목록: {}", updatedEnvironmentMap.keySet());
+
         return updatedEnvironmentMap;
     }
 
-    // Environment 내 File 객체의 value 값을 해시 기반 URL로 변경
-    public void updateEnvironmentFilePathsToURL(Environment environment, InMemoryFile updatedFile) {
+    // ✅ Environment 내 File 객체의 value 값을 원본 경로와 일치하는 경우에만 해시 기반 URL로 변경
+    public void updateEnvironmentFilePathsToURL(Environment environment, String originalPath, String updatedUrl) {
         AssetAdministrationShellElementWalkerVisitor visitor = new AssetAdministrationShellElementWalkerVisitor() {
             @Override
             public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File file) {
-                if (file != null && file.getValue() != null) {
-                    file.setValue(updatedFile.getPath());
-                    log.info("Updated file path: {}", file.getValue());
+                // file.getValue()가 원본 경로와 동일할 경우에만 업데이트 수행
+                if (file != null && file.getValue() != null && file.getValue().equals(originalPath)) {
+                    file.setValue(updatedUrl);
+                    log.info("Updated file path from {} to {}", originalPath, updatedUrl);
                 }
             }
         };
         visitor.visit(environment);
     }
+
 }
