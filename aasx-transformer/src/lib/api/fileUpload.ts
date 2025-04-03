@@ -131,7 +131,7 @@ export const listUploadedFiles = async () => {
 }; */
 
 // ✅ 동일 파일 검색
-export const getSHA256HashesMap = async () => {
+/* export const getSHA256HashesMap = async () => {
   try {
     const response = await axios.get(
       `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/sha256-hashes`
@@ -149,10 +149,10 @@ export const getSHA256HashesMap = async () => {
       throw new Error("SHA256 해시값을 가져오는 데 실패했습니다: 네트워크 오류");
     }
   }
-};
+}; */
 
 // ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
-export const getUpdatedEnvironments = async () => {
+/* export const getUpdatedEnvironments = async () => {
   try {
     const response = await axios.get(
       `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/download`
@@ -171,3 +171,4 @@ export const getUpdatedEnvironments = async () => {
     }
   }
 };
+ */

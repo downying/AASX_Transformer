@@ -107,20 +107,22 @@ public class FileUploadService {
     // ✅ InMemoryFile 객체 목록을 반환 (환경 내 참조된 파일 경로 처리)
     public Map<String, List<InMemoryFile>> getInMemoryFilesFromReferencedPaths() {
         Map<String, List<InMemoryFile>> inMemoryFilesMap = new HashMap<>();
-
+        // 업로드된 파일 목록과 environment 목록은 같은 인덱스를 가짐
         for (int i = 0; i < uploadedFileNames.size(); i++) {
             String fileName = uploadedFileNames.get(i);
             Environment environment = uploadedEnvironments.get(i);
+            // Environment에서 참조된 파일 경로들 추출
             List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
 
             if (paths.isEmpty()) {
+                // 참조 경로가 없다면 비어있는 리스트 매핑
                 inMemoryFilesMap.put(fileName, Collections.emptyList());
                 continue;
             }
-
+            // 실제 디스크에 저장된 AASX 파일 열기
             String aasxFilePath = uploadPath + File.separator + fileName;
             File aasxFile = new File(aasxFilePath);
-
+            // OPCPackage로 AASX 내부 리소스를 읽어옴
             try (OPCPackage aasxRoot = OPCPackage.open(aasxFile)) {
                 List<InMemoryFile> inMemoryFiles = aasxFileDeserializer.readFiles(aasxRoot, paths);
                 inMemoryFilesMap.put(fileName, inMemoryFiles);
