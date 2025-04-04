@@ -159,6 +159,7 @@ public class FileUploadService {
                         String extension = "";
                         String originalPath = inMemoryFile.getPath();
                         if (originalPath != null && originalPath.contains(".")) {
+                            log.info("originalPath : {} ", originalPath);
                             extension = originalPath.substring(originalPath.lastIndexOf("."));
                         }
                         String newFileName = hash + extension;
