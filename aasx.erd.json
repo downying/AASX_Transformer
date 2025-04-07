@@ -4,8 +4,8 @@
   "settings": {
     "width": 2000,
     "height": 2000,
-    "scrollTop": -1,
-    "scrollLeft": -233.689,
+    "scrollTop": 0,
+    "scrollLeft": -91.689,
     "zoomLevel": 0.94,
     "show": 431,
     "database": 4,
@@ -34,10 +34,7 @@
       "yVvZJsnkvwBPU0JxBRQlH",
       "budDcw6EGD-OqhfV2xDmD"
     ],
-    "relationshipIds": [
-      "a3pAE8H96bu4c9VJLcfY7",
-      "NrsxjGIF5mEw4_OKGEUbM"
-    ],
+    "relationshipIds": [],
     "indexIds": [],
     "memoIds": []
   },
@@ -134,19 +131,19 @@
         "id": "p1UIgdxehB4mWXKQKdWv0",
         "tableId": "yVvZJsnkvwBPU0JxBRQlH",
         "name": "meta_id",
-        "comment": "AASX 파일의 식별 아이디",
+        "comment": "AASX 파일 식별자",
         "dataType": "VARCHAR",
         "default": "",
         "options": 10,
         "ui": {
           "keys": 1,
           "widthName": 60,
-          "widthComment": 137,
+          "widthComment": 98,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942086515,
+          "updateAt": 1743987986060,
           "createAt": 1743732385511
         }
       },
@@ -194,19 +191,19 @@
         "id": "--a3pPdKkuMWX5AiyKE2T",
         "tableId": "yVvZJsnkvwBPU0JxBRQlH",
         "name": "updated_environment",
-        "comment": "첨부파일 경로가 URL로 대체된 후의 JSON",
+        "comment": "updated environment",
         "dataType": "VARCHAR",
         "default": "",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 119,
-          "widthComment": 224,
+          "widthComment": 117,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942067840,
+          "updateAt": 1743987992080,
           "createAt": 1743732406054
         }
       },
@@ -254,19 +251,19 @@
         "id": "ThTTVHHnOV7CqtS67miCM",
         "tableId": "budDcw6EGD-OqhfV2xDmD",
         "name": "content_type",
-        "comment": "파일의 MIME 타입",
+        "comment": "파일 MIME 타입",
         "dataType": "VARCHAR",
         "default": "",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 71,
-          "widthComment": 99,
+          "widthComment": 87,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942139824,
+          "updateAt": 1743987975300,
           "createAt": 1743732462502
         }
       },
@@ -274,19 +271,19 @@
         "id": "X8qwn51njleuMGEej0qcD",
         "tableId": "budDcw6EGD-OqhfV2xDmD",
         "name": "file_path",
-        "comment": "실제 파일이 저장된 상대 경로",
+        "comment": "첨부파일 상대경로",
         "dataType": "VARCHAR",
         "default": "",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 60,
-          "widthComment": 159,
+          "widthComment": 101,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942172674,
+          "updateAt": 1743987968961,
           "createAt": 1743732463839
         }
       },
@@ -314,19 +311,19 @@
         "id": "UL1VnswQMIooZaKIoqL1r",
         "tableId": "budDcw6EGD-OqhfV2xDmD",
         "name": "download_url",
-        "comment": "해시 값을 기반으로 구성한 다운로드 URL",
+        "comment": "다운로드 URL",
         "dataType": "VARCHAR",
         "default": "",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 74,
-          "widthComment": 220,
+          "widthComment": 74,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942144468,
+          "updateAt": 1743987971862,
           "createAt": 1743732466214
         }
       },
@@ -374,19 +371,19 @@
         "id": "g5_hSScZfw6YmaXGflHPt",
         "tableId": "budDcw6EGD-OqhfV2xDmD",
         "name": "extension",
-        "comment": "파일의 확장자",
+        "comment": "파일 확장자",
         "dataType": "VARCHAR",
         "default": "",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 60,
-          "widthComment": 77,
+          "widthComment": 65,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942146623,
+          "updateAt": 1743987978197,
           "createAt": 1743740444587
         }
       },
@@ -394,19 +391,19 @@
         "id": "4VJOu4RPZURQP2LPvt-kc",
         "tableId": "yVvZJsnkvwBPU0JxBRQlH",
         "name": "upload_timestamp",
-        "comment": "업로드 일자",
+        "comment": "AASX 파일 업로드 일자",
         "dataType": "DATETIME ",
         "default": "CURRENT_TIMESTAMP",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 100,
-          "widthComment": 65,
+          "widthComment": 125,
           "widthDataType": 60,
           "widthDefault": 122
         },
         "meta": {
-          "updateAt": 1743750114027,
+          "updateAt": 1743987995446,
           "createAt": 1743742371881
         }
       },
@@ -454,19 +451,19 @@
         "id": "X9xmbDVEMjpRgF317aGSp",
         "tableId": "yVvZJsnkvwBPU0JxBRQlH",
         "name": "environment",
-        "comment": "deserialized된 environment",
+        "comment": "deserialized envrionment",
         "dataType": "VARCHAR",
         "default": "",
         "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 69,
-          "widthComment": 147,
+          "widthComment": 135,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942122746,
+          "updateAt": 1743987989344,
           "createAt": 1743748478580
         }
       },
@@ -617,7 +614,7 @@
         "comment": "첨부파일 이름",
         "dataType": "VARCHAR",
         "default": "",
-        "options": 8,
+        "options": 0,
         "ui": {
           "keys": 0,
           "widthName": 60,
@@ -626,7 +623,7 @@
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942329174,
+          "updateAt": 1743987896868,
           "createAt": 1743942197955
         }
       },
@@ -639,7 +636,7 @@
         "default": "",
         "options": 8,
         "ui": {
-          "keys": 2,
+          "keys": 0,
           "widthName": 60,
           "widthComment": 137,
           "widthDataType": 60,
@@ -659,7 +656,7 @@
         "default": "",
         "options": 8,
         "ui": {
-          "keys": 2,
+          "keys": 0,
           "widthName": 60,
           "widthComment": 60,
           "widthDataType": 60,
@@ -673,20 +670,20 @@
       "2daYiVvQrS9HfgIuZ32FW": {
         "id": "2daYiVvQrS9HfgIuZ32FW",
         "tableId": "yVvZJsnkvwBPU0JxBRQlH",
-        "name": "aasx_file_name",
-        "comment": "AASX 파일의 이름",
+        "name": "package_file_name",
+        "comment": "AASX 파일 원본 이름",
         "dataType": "VARCHAR",
         "default": "",
-        "options": 8,
+        "options": 0,
         "ui": {
           "keys": 0,
-          "widthName": 80,
-          "widthComment": 98,
+          "widthName": 101,
+          "widthComment": 113,
           "widthDataType": 60,
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1743942550644,
+          "updateAt": 1743987983221,
           "createAt": 1743942526796
         }
       }
@@ -842,7 +839,7 @@
           "columnIds": [
             "p1UIgdxehB4mWXKQKdWv0"
           ],
-          "x": 850,
+          "x": 761,
           "y": 348,
           "direction": 2
         },
@@ -879,7 +876,7 @@
           "columnIds": [
             "HsIP3JAx4VTY8jWgMFjIk"
           ],
-          "x": 850,
+          "x": 761,
           "y": 448,
           "direction": 2
         },
@@ -937,7 +934,7 @@
         "name": 1743732398407,
         "options(notNull)": 1743742485385,
         "options(primaryKey)": 1743742491201,
-        "comment": 1743942086514,
+        "comment": 1743987986059,
         "dataType": 1743942060555
       }
     ],
@@ -970,7 +967,7 @@
       {
         "name": 1743732443207,
         "dataType": 1743942067839,
-        "comment": 1743742550952,
+        "comment": 1743987992079,
         "options(notNull)": 1743748343256
       }
     ],
@@ -995,7 +992,7 @@
       {
         "name": 1743740249160,
         "dataType": 1743942139823,
-        "comment": 1743742590086
+        "comment": 1743987975299
       }
     ],
     "X8qwn51njleuMGEej0qcD": [
@@ -1005,7 +1002,7 @@
       {
         "name": 1743740252798,
         "dataType": 1743942142259,
-        "comment": 1743942172672
+        "comment": 1743987968959
       }
     ],
     "Vmr_nDp7FpFXTKkWBxaCn": [
@@ -1027,7 +1024,7 @@
       {
         "name": 1743740262086,
         "dataType": 1743942144467,
-        "comment": 1743742599957
+        "comment": 1743987971861
       }
     ],
     "PD1oUpGdYXVFfpPeBNASJ": [
@@ -1049,7 +1046,7 @@
       {
         "name": 1743740448679,
         "dataType": 1743942146622,
-        "comment": 1743742604826
+        "comment": 1743987978196
       }
     ],
     "4VJOu4RPZURQP2LPvt-kc": [
@@ -1061,7 +1058,7 @@
         "dataType": 1743742444851,
         "options(notNull)": 1743750095342,
         "default": 1743742445703,
-        "comment": 1743750114026
+        "comment": 1743987995444
       }
     ],
     "t4V4_dau478CNyFt-gLAX": [
@@ -1095,7 +1092,7 @@
       {
         "name": 1743942096146,
         "dataType": 1743942099565,
-        "comment": 1743942122745
+        "comment": 1743987989343
       }
     ],
     "7_sI_J_-usnfz8dP0yGkO": [
@@ -1231,7 +1228,7 @@
       {
         "name": 1743942203535,
         "dataType": 1743942209323,
-        "options(notNull)": 1743942210961,
+        "options(notNull)": 1743987896867,
         "comment": 1743942329173
       }
     ],
@@ -1250,7 +1247,7 @@
     "a3pAE8H96bu4c9VJLcfY7": [
       "relationshipEntities",
       1743942351145,
-      -1,
+      1743988757355,
       {}
     ],
     "HsIP3JAx4VTY8jWgMFjIk": [
@@ -1268,7 +1265,7 @@
     "NrsxjGIF5mEw4_OKGEUbM": [
       "relationshipEntities",
       1743942359115,
-      -1,
+      1743988759378,
       {}
     ],
     "2daYiVvQrS9HfgIuZ32FW": [
@@ -1276,10 +1273,10 @@
       1743942526795,
       -1,
       {
-        "name": 1743942536140,
+        "name": 1743987620253,
         "dataType": 1743942541448,
-        "options(notNull)": 1743942542571,
-        "comment": 1743942550643
+        "options(notNull)": 1743987724279,
+        "comment": 1743987983218
       }
     ]
   }

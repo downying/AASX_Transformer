@@ -52,6 +52,9 @@ dependencies {
 	// SHA-256 해싱
 	implementation 'commons-codec:commons-codec:1.15'
 
+	// sqlite
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	implementation 'org.xerial:sqlite-jdbc:3.41.2.1'
 }
 
 tasks.named('test') {
