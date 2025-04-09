@@ -6,8 +6,8 @@
         {
             "previewLimit": 50,
             "driver": "SQLite",
-            "database": "C:\\SQLite\\aasx_transformer.sqlite",
-            "name": "aasx_transformer"
+            "database": "C:\\SQLite\\aasx.sqlite",
+            "name": "aasx"
         }
     ]
 }
