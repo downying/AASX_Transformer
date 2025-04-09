@@ -5,7 +5,4 @@
 
 <mapper namespace="com.aasx.transformer.upload.mapper.UploadMapper">
 
-    <!-- 패키지 파일 등록 -->
-   
-
 </mapper>

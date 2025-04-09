@@ -4,8 +4,8 @@
   "settings": {
     "width": 2000,
     "height": 2000,
-    "scrollTop": -5,
-    "scrollLeft": -1,
+    "scrollTop": -33,
+    "scrollLeft": 0,
     "zoomLevel": 1,
     "show": 431,
     "database": 4,
@@ -816,7 +816,7 @@
       "8_NTr8-C7xrdOF9UXGIZB": {
         "id": "8_NTr8-C7xrdOF9UXGIZB",
         "tableId": "otzBBQDUxYAjxeBNjh-oj",
-        "name": "extention",
+        "name": "extension",
         "comment": "확장자",
         "dataType": "TEXT",
         "default": "",
@@ -829,7 +829,7 @@
           "widthDefault": 60
         },
         "meta": {
-          "updateAt": 1744163905284,
+          "updateAt": 1744187243754,
           "createAt": 1744161759782
         }
       },
@@ -1593,7 +1593,7 @@
       1744161759781,
       -1,
       {
-        "name": 1744161762715,
+        "name": 1744187243753,
         "dataType": 1744161764342,
         "comment": 1744161769511,
         "options(notNull)": 1744163905283
