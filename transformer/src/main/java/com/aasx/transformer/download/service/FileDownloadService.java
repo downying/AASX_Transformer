@@ -1,11 +1,14 @@
 package com.aasx.transformer.download.service;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import com.aasx.transformer.upload.dto.FilesMeta;
+import com.aasx.transformer.upload.mapper.UploadMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,9 @@ import java.io.File;
 @Slf4j
 public class FileDownloadService {
 
+    @Autowired
+    private UploadMapper uploadMapper;
+
     @Value("${upload.path}")
     private String uploadPath;
 
@@ -25,7 +31,6 @@ public class FileDownloadService {
     public Resource downloadEnvironmentAsJson(Environment environment, String originalFileName) {
         log.info("downloadEnvironmentAsJson 호출 - originalFileName: {}", originalFileName);
         try {
-            // originalFileName에서 확장자 제거 후 .json 붙이기
             String baseName = originalFileName;
             int dotIndex = originalFileName.lastIndexOf(".");
             if (dotIndex > 0) {
@@ -33,7 +38,6 @@ public class FileDownloadService {
             }
             String tempFileName = baseName + ".json";
             File tempFile = new File(uploadPath, tempFileName);
-            
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(tempFile, environment);
             log.info("Environment JSON 임시 파일 생성: {}", tempFile.getAbsolutePath());
             return new FileSystemResource(tempFile);
@@ -42,7 +46,7 @@ public class FileDownloadService {
             throw new RuntimeException("Environment JSON 파일 생성 실패", e);
         }
     }
-    
+
     /**
      * ✅ 업로드 폴더에서 파일명이 전달받은 해시값으로 시작하는 파일을 찾아 Resource로 반환
      *
@@ -50,31 +54,20 @@ public class FileDownloadService {
      * @return 다운로드 가능한 Resource
      */
     public Resource downloadFileByHash(String hash) {
-        File uploadDir = new File(uploadPath);
-        if (!uploadDir.exists() || !uploadDir.isDirectory()) {
-            log.error("업로드 디렉토리가 존재하지 않습니다: {}", uploadPath);
-            throw new RuntimeException("업로드 디렉토리를 찾을 수 없습니다.");
-        }
-
-        // 업로드 폴더 내의 파일 중, 파일명이 hash로 시작하는 파일을 찾습니다.
-        File matchingFile = null;
-        File[] files = uploadDir.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (file.getName().startsWith(hash)) {
-                    matchingFile = file;
-                    break;
-                }
-            }
-        }
-
-        if (matchingFile == null) {
-            log.error("해당 해시값으로 시작하는 파일을 찾을 수 없습니다: {}", hash);
+        FilesMeta meta = uploadMapper.selectOneFileMetaByHash(hash);
+        if (meta == null) {
+            log.error("해당 해시의 파일 메타 정보가 없습니다: {}", hash);
             throw new RuntimeException("파일을 찾을 수 없습니다.");
         }
-
-        log.info("다운로드할 파일 경로: {}", matchingFile.getAbsolutePath());
-        return new FileSystemResource(matchingFile);
+        String extension = meta.getExtension();
+        String fileName = hash + extension;
+        File file = new File(uploadPath, fileName);
+        if (!file.exists()) {
+            log.error("물리 파일이 존재하지 않습니다: {}", file.getAbsolutePath());
+            throw new RuntimeException("파일을 찾을 수 없습니다.");
+        }
+        log.info("다운로드할 파일 경로: {}", file.getAbsolutePath());
+        return new FileSystemResource(file);
     }
 
 }

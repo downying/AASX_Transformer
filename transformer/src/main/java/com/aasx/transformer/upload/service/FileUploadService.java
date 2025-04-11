@@ -5,6 +5,8 @@ import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.InMemoryFile;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.internal.visitor.AssetAdministrationShellElementWalkerVisitor;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
+import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.aasx.transformer.deserializer.AASXFileDeserializer;
 import com.aasx.transformer.deserializer.SHA256HashApache;
+import com.aasx.transformer.upload.dto.Files;
+import com.aasx.transformer.upload.dto.FilesMeta;
+import com.aasx.transformer.upload.mapper.UploadMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,6 +37,9 @@ public class FileUploadService {
 
     @Autowired
     private AASXFileDeserializer aasxFileDeserializer;
+
+    @Autowired
+    private UploadMapper uploadMapper;
 
     @Value("${upload.path}")
     private String uploadPath;
@@ -135,64 +143,106 @@ public class FileUploadService {
     }
 
     // ✅ 동일 파일 검색 및 해시값 기반 파일 저장 후, fileName과 업데이트된 Environment를 매핑하여 반환
+    /**
+     * (Phase 2) 파일 해시 계산 후 DB 반영, 물리 파일 저장, 그리고 Environment 내 File 객체의 경로를 다운로드
+     * URL로 변경
+     * - files 테이블에 (hash, size)를 등록 (없으면 삽입, 있으면 ref_count 증가)
+     * - files_meta 테이블에는 Environment 객체에서 추출한 AAS ID, Submodel ID, idShort(복합키)와 함께
+     * 파일 이름(원본 파일명에서 확장자 앞 부분)과 확장자, content type, 해시를 등록
+     * - 물리 파일은 hash + extension 으로 저장되며, 다운로드 URL은
+     * baseDownloadUrl + "/api/transformer/download/" + hash + extension
+     * 의 형식으로 구성
+     */
     public Map<String, Environment> computeSHA256HashesForInMemoryFiles() {
         Map<String, Environment> updatedEnvironmentMap = new HashMap<>();
         Map<String, List<InMemoryFile>> inMemoryFilesMap = getInMemoryFilesFromReferencedPaths();
 
         for (Map.Entry<String, List<InMemoryFile>> entry : inMemoryFilesMap.entrySet()) {
-            String fileName = entry.getKey();
+            String fileNameKey = entry.getKey();
             List<InMemoryFile> inMemoryFiles = entry.getValue();
 
-            int index = uploadedFileNames.indexOf(fileName);
+            int index = uploadedFileNames.indexOf(fileNameKey);
             if (index < 0 || index >= uploadedEnvironments.size()) {
-                log.warn("해당 파일 이름에 대응하는 환경을 찾을 수 없음: {}", fileName);
+                log.warn("해당 파일 이름에 대응하는 Environment를 찾을 수 없음: {}", fileNameKey);
                 continue;
             }
             Environment environment = uploadedEnvironments.get(index);
 
             if (inMemoryFiles.isEmpty()) {
-                log.info("첨부파일이 없습니다. Environment의 File 객체를 업데이트하지 않습니다: {}", fileName);
-            } else {
-                for (InMemoryFile inMemoryFile : inMemoryFiles) {
-                    try {
-                        String hash = SHA256HashApache.computeSHA256Hash(inMemoryFile);
-                        String extension = "";
-                        String originalPath = inMemoryFile.getPath();
-                        if (originalPath != null && originalPath.contains(".")) {
-                            log.info("originalPath : {} ", originalPath);
-                            extension = originalPath.substring(originalPath.lastIndexOf("."));
-                        }
-                        String newFileName = hash + extension;
-                        String newFilePath = uploadPath + File.separator + newFileName;
-                        File newFile = new File(newFilePath);
+                log.info("첨부파일이 없습니다: {}", fileNameKey);
+                updatedEnvironmentMap.put(fileNameKey, environment);
+                continue;
+            }
 
-                        if (!newFile.exists()) {
-                            try (FileOutputStream fos = new FileOutputStream(newFile)) {
-                                fos.write(inMemoryFile.getFileContent());
-                            }
-                            log.info("첨부파일 저장: 해시값 {} 기반 파일명 {} 으로 저장됨", hash, newFileName);
-                        } else {
-                            log.info("중복 파일 발견: {} (이미 저장됨)", newFileName);
-                        }
+            for (InMemoryFile inMemoryFile : inMemoryFiles) {
+                try {
+                    // 1) SHA-256 해시 계산 및 파일 크기 구하기
+                    String hash = SHA256HashApache.computeSHA256Hash(inMemoryFile);
+                    int fileSize = inMemoryFile.getFileContent().length;
 
-                        // 첨부파일 다운로드 전용 URL 생성
-                        String hashBasedUrl = baseDownloadUrl + "/api/transformer/download/" + hash + extension;
-                        log.info("생성된 해시 기반 URL: {}", hashBasedUrl);
+                    // 2) DB의 files 테이블에 파일 해시 등록 (hash, size)
+                    uploadMapper.insertFile(hash, fileSize);
 
-                        // 원본 첨부파일 경로(originalPath)와 새 URL(hashBasedUrl)를 전달하여 해당 File 객체만 업데이트
-                        updateEnvironmentFilePathsToURL(environment, originalPath, hashBasedUrl);
+                    // 3) Environment 객체를 통해 해당 파일의 aas_id, submodel_id, idShort 추출
+                    String originalPath = inMemoryFile.getPath();
+                    // Environment 기반으로 composite key를 얻음 (형식: "aasId/submodelId/idShort")
+                    String compositeKey = deriveCompositeKeyFromEnvironment(environment, originalPath);
+                    String[] keys = compositeKey.split("/");
+                    String aasId = keys.length > 0 ? keys[0] : "unknown";
+                    String submodelId = keys.length > 1 ? keys[1] : "unknown";
+                    String idShort = keys.length > 2 ? keys[2] : "unknown";
 
-                    } catch (Exception e) {
-                        log.error("해시 계산 중 오류 발생: {}", e.getMessage(), e);
+                    // 4) Environment 내에서 원본 파일의 상대경로에서 파일명과 확장자 추출
+                    String baseName = new File(originalPath).getName();
+                    String extractedName;
+                    String extension = "";
+                    int dotIndex = baseName.lastIndexOf(".");
+                    if (dotIndex > 0) {
+                        extractedName = baseName.substring(0, dotIndex);
+                        extension = baseName.substring(dotIndex); // 확장자 (점 포함)
+                    } else {
+                        extractedName = baseName;
                     }
+
+                    // 5) files_meta 테이블에 파일 메타 등록
+                    FilesMeta meta = new FilesMeta();
+                    meta.setAasId(aasId);
+                    meta.setSubmodelId(submodelId);
+                    meta.setIdShort(idShort);
+                    meta.setName(extractedName); // 원본 파일 이름(확장자 제외)
+                    meta.setExtension(extension); // 추출한 확장자
+                    meta.setContentType("application/octet-stream"); // 필요에 따라 MIME 타입 적용
+                    meta.setHash(hash);
+                    uploadMapper.insertFileMeta(meta);
+
+                    // 6) 물리 파일 저장 (이미 존재하면 저장하지 않음)
+                    String newFileName = hash + extension;
+                    String newFilePath = uploadPath + File.separator + newFileName;
+                    File newFile = new File(newFilePath);
+                    if (!newFile.exists()) {
+                        try (FileOutputStream fos = new FileOutputStream(newFile)) {
+                            fos.write(inMemoryFile.getFileContent());
+                        }
+                        log.info("첨부파일 로컬 저장: {}", newFilePath);
+                    } else {
+                        log.info("이미 로컬에 존재: {}", newFilePath);
+                    }
+
+                    // 7) 다운로드 URL 구성: baseDownloadUrl + "/api/transformer/download/" + hash +
+                    // extension
+                    String hashBasedUrl = baseDownloadUrl + "/api/transformer/download/" + hash + extension;
+
+                    // 8) Environment 내 File 객체의 값이 originalPath와 일치하면 다운로드 URL로 업데이트
+                    updateEnvironmentFilePathsToURL(environment, originalPath, hashBasedUrl);
+
+                } catch (Exception e) {
+                    log.error("해시 계산 또는 DB 반영 중 오류: {}", e.getMessage(), e);
                 }
             }
-            updatedEnvironmentMap.put(fileName, environment);
+            updatedEnvironmentMap.put(fileNameKey, environment);
         }
 
-        // 추가: 생성된 updatedEnvironmentMap의 키 목록 로그 출력
         log.info("업데이트된 Environment Map의 파일 이름 목록: {}", updatedEnvironmentMap.keySet());
-
         return updatedEnvironmentMap;
     }
 
@@ -201,14 +251,129 @@ public class FileUploadService {
         AssetAdministrationShellElementWalkerVisitor visitor = new AssetAdministrationShellElementWalkerVisitor() {
             @Override
             public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File file) {
-                // file.getValue()가 원본 경로와 동일할 경우에만 업데이트 수행
-                if (file != null && file.getValue() != null && file.getValue().equals(originalPath)) {
-                    file.setValue(updatedUrl);
-                    log.info("Updated file path from {} to {}", originalPath, updatedUrl);
+                if (file != null && file.getValue() != null) {
+                    log.info("현재 file value: {}", file.getValue());
+                    if (file.getValue().trim().equals(originalPath.trim())) {
+                        file.setValue(updatedUrl);
+                        log.info("Updated file path from {} to {}", originalPath, updatedUrl);
+                    }
                 }
             }
+
         };
         visitor.visit(environment);
+    }
+
+    /**
+     * Environment 내에서 originalPath와 일치하는 File 요소를 찾아,
+     * 해당 File 요소의 부모(Submodel)의 id와 File 요소의 idShort를 가져와
+     * "aasId/submodelId/fileIdShort" 형식의 문자열로 반환
+     */
+    private String deriveCompositeKeyFromEnvironment(Environment env, String originalPath) {
+        // AAS ID는 첫 번째 AAS의 ID 사용
+        String aasId = env.getAssetAdministrationShells().get(0).getId();
+
+        String submodelId = null;
+        String fileIdShort = null;
+
+        // Environment 내의 모든 Submodel을 순회하여
+        // 각 Submodel의 SubmodelElements 중 File 요소의 value가 originalPath와 일치하는 File을 찾음
+        if (env.getSubmodels() != null) {
+            for (Submodel submodel : env.getSubmodels()) {
+                if (submodel.getSubmodelElements() != null) {
+                    for (SubmodelElement sme : submodel.getSubmodelElements()) {
+                        if (sme instanceof org.eclipse.digitaltwin.aas4j.v3.model.File) {
+                            org.eclipse.digitaltwin.aas4j.v3.model.File fileElem = (org.eclipse.digitaltwin.aas4j.v3.model.File) sme;
+                            // 첨부파일의 상대경로가 일치하는지 비교
+                            if (fileElem.getValue() != null && fileElem.getValue().equals(originalPath)) {
+                                submodelId = submodel.getId(); // 해당 File이 속한 Submodel의 ID
+                                fileIdShort = fileElem.getIdShort(); // 해당 File 요소의 idShort
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (submodelId != null) {
+                    break;
+                }
+            }
+        }
+
+        return aasId + "/" + submodelId + "/" + fileIdShort;
+    }
+
+    /**
+     * 파일 메타 삭제 (클라이언트 요청 시)
+     * DB에서 파일 메타를 삭제한 후 해당 해시의 ref_count를 감소시키고, 0이면 files 테이블에서도 삭제
+     */
+    public void deleteFileMeta(String compositeKey) {
+        String[] keys = compositeKey.split("/");
+        if (keys.length < 3) {
+            log.warn("파일 메타 삭제를 위한 key 형식이 올바르지 않음: {}", compositeKey);
+            return;
+        }
+        String aasId = keys[0];
+        String submodelId = keys[1];
+        String idShort = keys[2];
+        FilesMeta meta = uploadMapper.selectFileMetaByKey(aasId, submodelId, idShort);
+        if (meta == null) {
+            log.warn("파일 메타가 존재하지 않음: {}", compositeKey);
+            return;
+        }
+        String hash = meta.getHash();
+        uploadMapper.deleteFileMeta(aasId, submodelId, idShort);
+        log.info("파일 메타 삭제됨: {}", compositeKey);
+        uploadMapper.decrementFileRefCount(hash);
+        Files fileInfo = uploadMapper.selectFileByHash(hash);
+        if (fileInfo == null || fileInfo.getRefCount() <= 0) {
+            uploadMapper.deleteFileByHash(hash);
+            log.info("ref_count 0으로 인해 files 테이블에서도 삭제됨: {}", hash);
+        }
+    }
+
+    /**
+     * 특정 패키지 파일 이름에 해당하는 Environment의 첨부파일 메타 정보를 조회합니다.
+     * Environment 내의 각 Submodel을 순회하여 File 요소를 확인하고,
+     * 각 File 요소의 복합키 (aasId, submodelId, idShort)를 이용해 DB에서 파일 메타 정보를 조회합니다.
+     */
+    public List<FilesMeta> getFileMetasByPackageFileName(String packageFileName) {
+        int index = uploadedFileNames.indexOf(packageFileName);
+        if (index < 0) {
+            log.warn("패키지 파일 '{}' 에 해당하는 Environment를 찾을 수 없습니다.", packageFileName);
+            return Collections.emptyList();
+        }
+        Environment environment = uploadedEnvironments.get(index);
+        List<FilesMeta> metas = new ArrayList<>();
+
+        // 기본적으로 Environment의 첫번째 AAS의 ID를 사용 (필요에 따라 수정 가능)
+        String aasId = environment.getAssetAdministrationShells().get(0).getId();
+
+        if (environment.getSubmodels() != null) {
+            for (Submodel submodel : environment.getSubmodels()) {
+                String submodelId = submodel.getId();
+                if (submodel.getSubmodelElements() != null) {
+                    for (SubmodelElement element : submodel.getSubmodelElements()) {
+                        // File 타입인지 확인
+                        if (element instanceof org.eclipse.digitaltwin.aas4j.v3.model.File) {
+                            org.eclipse.digitaltwin.aas4j.v3.model.File fileElement = (org.eclipse.digitaltwin.aas4j.v3.model.File) element;
+                            String idShort = fileElement.getIdShort();
+
+                            // 복합키 (aasId, submodelId, idShort)를 이용하여 DB에서 파일 메타 조회
+                            FilesMeta meta = uploadMapper.selectFileMetaByKey(aasId, submodelId, idShort);
+                            if (meta != null) {
+                                metas.add(meta);
+                            } else {
+                                log.warn("DB에서 해당 복합키 (aasId: {}, submodelId: {}, idShort: {}) 의 파일 메타를 찾지 못함.",
+                                        aasId, submodelId, idShort);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        log.info("패키지 파일 '{}' (AAS ID {}) 에 해당하는 첨부파일 메타 개수: {}", packageFileName, aasId, metas.size());
+        return metas;
     }
 
 }

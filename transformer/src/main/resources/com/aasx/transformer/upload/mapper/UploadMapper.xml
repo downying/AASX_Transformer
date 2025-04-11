@@ -4,5 +4,89 @@
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.aasx.transformer.upload.mapper.UploadMapper">
-  
+    
+    <!-- ✅ files 테이블 관련 -->
+    <!-- 특정 해시의 파일 정보를 조회  -->
+    <select id="selectFileByHash" parameterType="String" resultType="com.aasx.transformer.upload.dto.Files">
+      <![CDATA[
+      SELECT hash, ref_count AS refCount, size
+      FROM files
+      WHERE hash = #{hash}
+      ]]>
+    </select>
+
+    <!-- 패키지 파일 업로드 시 파일 해시 등록 -->
+    <insert id="insertFile" parameterType="map">
+      <![CDATA[
+      INSERT INTO files (hash, ref_count, size)
+      VALUES (#{hash}, 1, #{size})
+      ON CONFLICT(hash)
+      DO UPDATE SET ref_count = ref_count + 1
+      ]]>
+    </insert>
+
+    <!-- ref_count를 감소 시키기  -->
+    <update id="decrementFileRefCount" parameterType="String">
+      <![CDATA[
+      UPDATE files
+      SET ref_count = ref_count - 1
+      WHERE hash = #{hash}
+      ]]>
+    </update>
+
+    <!-- ref_count가 0 이하인 파일 정보를 삭제  -->
+    <delete id="deleteFileByHash" parameterType="String">
+      <![CDATA[
+      DELETE FROM files
+      WHERE hash = #{hash}
+        AND ref_count <= 0
+      ]]>
+    </delete>
+
+    <!-- ✅ files_meta 테이블 관련 -->
+    <!-- 특정 path(복합키: aas_id, submodel_id, idShort)로 파일 메타 조회 -->
+    <select id="selectFileMetaByPath" parameterType="map" resultType="com.aasx.transformer.upload.dto.FilesMeta">
+      <![CDATA[
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      FROM files_meta
+      WHERE aas_id = #{aasId} AND submodel_id = #{submodelId} AND idShort = #{idShort}
+      ]]>
+    </select>
+
+    <!-- 특정 해시에 해당하는 파일 메타 중 하나를 조회 -->
+    <select id="selectFileMetaByHashAndPath" parameterType="map" resultType="com.aasx.transformer.upload.dto.FilesMeta">
+      <![CDATA[
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      FROM files_meta
+      WHERE aas_id = #{aasId} AND submodel_id = #{submodelId} AND idShort = #{idShort} AND hash = #{hash}
+      ]]>
+    </select>
+
+    <!-- 파일 메타 신규 등록 -->
+    <insert id="insertFileMeta" parameterType="com.aasx.transformer.upload.dto.FilesMeta">
+      <![CDATA[
+      INSERT INTO files_meta (aas_id, submodel_id, idShort, name, extension, content_type, hash)
+      VALUES (#{aasId}, #{submodelId}, #{idShort}, #{name}, #{extension}, #{contentType}, #{hash})
+      ON CONFLICT(aas_id, submodel_id, idShort) DO NOTHING
+      ]]>
+    </insert>
+
+    <!-- 파일 메타 삭제 -->
+    <delete id="deleteFileMeta" parameterType="map">
+      <![CDATA[
+      DELETE FROM files_meta
+      WHERE aas_id = #{aasId} AND submodel_id = #{submodelId} AND idShort = #{idShort}
+      ]]>
+    </delete>
+
+    <!-- 단일 hash 기반 파일 메타 조회 -->
+    <select id="selectOneFileMetaByHash" parameterType="String" resultType="com.aasx.transformer.upload.dto.FilesMeta">
+      <![CDATA[
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      FROM files_meta
+      WHERE hash = #{hash}
+      LIMIT 1
+      ]]>
+    </select>
+    
 </mapper>

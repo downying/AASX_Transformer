@@ -5,24 +5,53 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { listUploadedFiles } from "@/lib/api/fileUpload";
-import { downloadEnvironment } from "@/lib/api/fileDownload";
+// packageFileName을 인자로 받도록 변경된 listAttachmentFileMetas 함수
+import { downloadEnvironment, downloadFile, listAttachmentFileMetas } from "@/lib/api/fileDownload";
+
+export interface FileMeta {
+  hash: string;
+  contentType: string;
+  extension: string;
+  // 추가 정보가 있으면 확장
+}
 
 const TransformerPage = () => {
-  // 원래 업로드된 파일 목록
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  // 선택한 패키지 파일의 첨부파일 메타 정보 상태
+  const [attachmentFileMetas, setAttachmentFileMetas] = useState<FileMeta[]>([]);
+  // 현재 선택한 패키지 파일 (예: 목록에서 클릭한 파일)을 state로 관리
+  const [selectedPackageFile, setSelectedPackageFile] = useState<string>("");
 
-  // 업로드된 파일 이름 가져오기
   useEffect(() => {
     const loadFiles = async () => {
       try {
-        const files = await listUploadedFiles();
-        setUploadedFiles(files);
+        // 패키지 파일 이름 배열 (문자열) 받아오기
+        const packageFiles: string[] = await listUploadedFiles();
+        setUploadedFiles(packageFiles);
+        // 최초에 첫번째 파일이 선택되도록 처리 (있다면)
+        if (packageFiles.length > 0) {
+          setSelectedPackageFile(packageFiles[0]);
+        }
       } catch (error) {
-        console.error("파일 목록을 가져오는 중 오류 발생:", error);
+        console.error("패키지 파일 목록을 가져오는 중 오류 발생:", error);
       }
     };
     loadFiles();
   }, []);
+
+  // 선택된 패키지 파일이 변경되면 첨부파일 메타 정보를 불러옵니다.
+  useEffect(() => {
+    const loadAttachmentMetas = async () => {
+      if (!selectedPackageFile) return;
+      try {
+        const fileMetas: FileMeta[] = await listAttachmentFileMetas(selectedPackageFile);
+        setAttachmentFileMetas(fileMetas);
+      } catch (error) {
+        console.error("첨부파일 메타 정보를 가져오는 중 오류 발생:", error);
+      }
+    };
+    loadAttachmentMetas();
+  }, [selectedPackageFile]);
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
@@ -36,7 +65,7 @@ const TransformerPage = () => {
           </Link>
         </div>
 
-        {/* 업로드된 파일 목록 */}
+        {/* 업로드된 패키지 파일 목록 */}
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl md:text-3xl font-semibold">
@@ -48,54 +77,67 @@ const TransformerPage = () => {
               {uploadedFiles.length > 0 ? (
                 <ul>
                   {uploadedFiles.map((file, idx) => (
-                    <li key={idx}>{file}</li>
+                    <li 
+                      key={idx} 
+                      
+                      onClick={() => setSelectedPackageFile(file)}
+                    >
+                      {file}
+                    </li>
                   ))}
                 </ul>
               ) : (
-                <p>No uploaded files found.</p>
+                <p>No uploaded AASX files found.</p>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* File List UI 추가 */}
+        {/* 선택된 패키지 파일의 첨부파일 목록 – DB의 파일 메타 정보를 기반 */}
         <Card className="mt-12">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl md:text-3xl font-semibold">File List</CardTitle>
+            <CardTitle className="text-2xl md:text-3xl">
+              {selectedPackageFile}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <table className="w-full table-auto border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-center py-2">Hash</th>
-                  <th className="text-center py-2">Content Type</th>
-                  <th className="text-center py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* 수정 필요 */}
-                {[1, 2, 3].map((_, idx) => (
-                  <tr key={idx} className="border-b">
-                    <td className="text-center py-2">123abc...{idx}</td>
-                    <td className="text-center py-2">image/png</td>
-                    <td className="py-2">
-                      <div className="flex justify-center gap-2">
-                        <Button size="sm" variant="outline">
-                          Viewer
-                        </Button>
-                        <Button size="sm">
-                          Download
-                        </Button>
-                      </div>
-                    </td>
+            {attachmentFileMetas.length > 0 ? (
+              <table className="w-full table-auto border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-center py-2">Hash</th>
+                    <th className="text-center py-2">Content Type</th>
+                    <th className="text-center py-2">Extension</th>
+                    <th className="text-center py-2">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {attachmentFileMetas.map((meta, idx) => (
+                    <tr key={idx} className="border-b">
+                      <td className="text-center py-2">{meta.hash}</td>
+                      <td className="text-center py-2">{meta.contentType}</td>
+                      <td className="text-center py-2">{meta.extension}</td>
+                      <td className="py-2">
+                        <div className="flex justify-center gap-2">
+                          <Button size="sm" variant="outline">
+                            Viewer
+                          </Button>
+                          <Button size="sm" onClick={() => downloadFile(meta.hash)}>
+                            Download
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No attachment file meta available for this package.</p>
+            )}
           </CardContent>
         </Card>
 
-        {/* 환경 JSON 다운로드 */}
+        {/* Environment JSON 다운로드 (패키지 파일 관련) */}
         <Card className="mt-12">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl md:text-3xl font-semibold">
@@ -113,7 +155,7 @@ const TransformerPage = () => {
                 </div>
               ))
             ) : (
-              <p>No files available for download.</p>
+              <p>No files available for JSON download.</p>
             )}
           </CardContent>
         </Card>

@@ -2,18 +2,20 @@ CREATE TABLE files
 (
   hash      TEXT    NOT NULL,
   ref_count INTEGER,
+  size      INTEGER,
   PRIMARY KEY (hash)
 );
 
 CREATE TABLE files_meta
 (
-  path         TEXT    NOT NULL,
+  aas_id       TEXT    NOT NULL,
+  submodel_id  TEXT    NOT NULL,
+  idShort      TEXT    NOT NULL,
   name         TEXT    NOT NULL,
   extension    TEXT    NOT NULL,
   content_type TEXT    NOT NULL,
-  size         INTEGER NOT NULL,
   hash         TEXT    NOT NULL,
-  PRIMARY KEY (path),
+  PRIMARY KEY (aas_id, submodel_id, idShort),
   FOREIGN KEY (hash) REFERENCES files(hash)
 );
 

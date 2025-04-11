@@ -1,6 +1,7 @@
 package com.aasx.transformer.download.controller;
 
 import com.aasx.transformer.download.service.FileDownloadService;
+import com.aasx.transformer.upload.dto.FilesMeta;
 import com.aasx.transformer.upload.service.FileUploadService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -36,12 +38,10 @@ public class FileDownloadController {
      */
     @GetMapping("/download/environment/{fileName}")
     public ResponseEntity<Resource> downloadEnvironment(@PathVariable("fileName") String fileName) {
-        // URL 경로에서 전달받은 fileName 값을 로그로 기록
         log.info("다운로드 요청된 파일 이름: {}", fileName);
-
         Map<String, Environment> updatedEnvironmentMap = fileUploadService.computeSHA256HashesForInMemoryFiles();
         if (!updatedEnvironmentMap.containsKey(fileName)) {
-            log.warn("요청된 파일 이름 '{}' 에 해당하는 환경 정보가 존재하지 않습니다.", fileName);
+            log.warn("요청된 파일 이름 '{}'에 해당하는 Environment 정보가 존재하지 않습니다.", fileName);
             return ResponseEntity.notFound().build();
         }
         Environment updatedEnvironment = updatedEnvironmentMap.get(fileName);
@@ -57,17 +57,19 @@ public class FileDownloadController {
      * @param hash 다운로드할 파일의 SHA-256 해시값 (저장된 파일명)
      * @return 파일을 포함한 ResponseEntity
      */
-    @GetMapping("/download/{hash}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable("hash") String hash) {
+    @GetMapping("/download/{hashAndExt}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable("hashAndExt") String hashAndExt) {
+        int dotIndex = hashAndExt.lastIndexOf(".");
+        if (dotIndex < 0) {
+            throw new RuntimeException("잘못된 파일명 형식입니다.");
+        }
+        String hash = hashAndExt.substring(0, dotIndex);
+        // extension은 DB의 파일 메타에서 조회되므로 여기서는 hash만 사용하여 다운로드 처리
         Resource resource = fileDownloadService.downloadFileByHash(hash);
-
-        // 파일명은 현재 해시값으로 사용
-        // Phase 2에서 파일 확장자, 콘텐츠 타입 등의 정보 보완 필요
-        String fileName = hash;
+        String fileName = resource.getFilename();
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"");
-
         try {
             return ResponseEntity.ok()
                     .headers(headers)
@@ -75,7 +77,21 @@ public class FileDownloadController {
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         } catch (IOException e) {
-            throw new RuntimeException("파일 다운로드 처리 중 오류가 발생했습니다.", e);
+            throw new RuntimeException("파일 다운로드 처리 중 오류 발생", e);
         }
+    }
+
+    /**
+     * 특정 패키지 파일에 속하는 첨부파일 메타 정보를 조회하는 엔드포인트  
+     * URL 예시: /api/transformer/attachment/fileMetas/package/MyPackage.aasx  
+     *  
+     * 업로드 시 저장된 Environment 내에서 각 File 요소의 복합키 (aas id, submodel id, idShort)를 
+     * 통해 DB에 등록된 파일 메타 정보를 조회합니다.
+     */
+    @GetMapping("/attachment/fileMetas/package/{packageFileName}")
+    public ResponseEntity<List<FilesMeta>> listAttachmentFileMetasByPackageFile(
+            @PathVariable("packageFileName") String packageFileName) {
+        List<FilesMeta> metas = fileUploadService.getFileMetasByPackageFileName(packageFileName);
+        return ResponseEntity.ok(metas);
     }
 }
