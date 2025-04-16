@@ -24,3 +24,6 @@ PRAGMA foreign_keys = ON;
 
 DROP TABLE files;
 DROP TABLE files_meta;
+
+SELECT * FROM files;
+SELECT * FROM files_meta;

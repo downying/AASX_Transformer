@@ -17,6 +17,9 @@ public interface UploadMapper {
     // 파일 크기(size)도 함께 전달하여, 동일 해시지만 크기가 다른 경우의 충돌을 방지할 수 있도록 함.
     int insertFile(@Param("hash") String hash, @Param("size") int size);
 
+    // files 테이블의 ref_count 재계산
+    int updateFileRefCount(@Param("hash") String hash);
+
     // ref_count를 감소 시키기 (파일 메타 삭제 시 사용)
     int decrementFileRefCount(@Param("hash") String hash);
 
@@ -25,7 +28,7 @@ public interface UploadMapper {
 
     // ✅ filesMeta
     // 복합 키(aas_id, submodel_id, idShort)로 파일 메타 조회
-    FilesMeta selectFileMetaByKey(@Param("aasId") String aasId, 
+    FilesMeta selectFileMetaByPath(@Param("aasId") String aasId, 
                                   @Param("submodelId") String submodelId, 
                                   @Param("idShort") String idShort);
 

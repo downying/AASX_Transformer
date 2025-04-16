@@ -33,6 +33,24 @@ public class FileDownloadController {
     private FileDownloadService fileDownloadService;
 
     /**
+     * 특정 패키지 파일에 속하는 첨부파일 메타 정보를 조회하는 엔드포인트
+     * 
+     * 업로드 시 저장된 Environment 내에서 각 File 요소의 복합키 (aas id, submodel id, idShort)를
+     * 통해 DB에 등록된 파일 메타 정보를 조회
+     */
+    @GetMapping("/package/{packageFileName:.+}")
+    public ResponseEntity<List<FilesMeta>> listAttachmentFileMetasByPackageFile(
+            @PathVariable("packageFileName") String packageFileName) {
+
+        // 새 패키지 파일의 경우, 먼저 해시 계산 및 DB 업데이트(파일 메타 삽입)를 수행
+        fileUploadService.computeSHA256HashesForInMemoryFiles();
+
+        // 그 후, 업데이트된 파일 메타 정보를 조회
+        List<FilesMeta> metas = fileDownloadService.getFileMetasByPackageFileName(packageFileName);
+        return ResponseEntity.ok(metas);
+    }
+
+    /**
      * ✅ 특정 파일의 업데이트된 Environment JSON 다운로드
      * 예시 URL: /api/transformer/download/environment/{fileName}
      */
@@ -54,17 +72,23 @@ public class FileDownloadController {
 
     /**
      * ✅ 첨부파일 다운로드
+     * 
      * @param hash 다운로드할 파일의 SHA-256 해시값 (저장된 파일명)
      * @return 파일을 포함한 ResponseEntity
      */
     @GetMapping("/download/{hashAndExt}")
     public ResponseEntity<Resource> downloadFile(@PathVariable("hashAndExt") String hashAndExt) {
+        // 전달받은 파일명 문자열에서 점(.)을 기준으로 해시를 추출한 후, DB에 저장된 파일 메타를 사용하여 물리 파일 Resource를 가져옴
+        // 예를 들어, 파일명이 "19b5caffb6a8a22427e5a947868d7910.png"이면,
+        // dotIndex : "19b5caffb6a8a22427e5a947868d7910"를 해시로 사용 
         int dotIndex = hashAndExt.lastIndexOf(".");
         if (dotIndex < 0) {
             throw new RuntimeException("잘못된 파일명 형식입니다.");
         }
         String hash = hashAndExt.substring(0, dotIndex);
-        // extension은 DB의 파일 메타에서 조회되므로 여기서는 hash만 사용하여 다운로드 처리
+        // 확장자 정보는 DB에 저장된 파일 메타를 통해 확인
+        // 따라서 hash만 사용하여 다운로드 처리
+        // 클라이언트에서 호출할 때는, meta.hash와 meta.extension이 별도로 저장되어 있어 "hash + extension" 형태의 문자열을 전달
         Resource resource = fileDownloadService.downloadFileByHash(hash);
         String fileName = resource.getFilename();
 
@@ -81,17 +105,4 @@ public class FileDownloadController {
         }
     }
 
-    /**
-     * 특정 패키지 파일에 속하는 첨부파일 메타 정보를 조회하는 엔드포인트  
-     * URL 예시: /api/transformer/attachment/fileMetas/package/MyPackage.aasx  
-     *  
-     * 업로드 시 저장된 Environment 내에서 각 File 요소의 복합키 (aas id, submodel id, idShort)를 
-     * 통해 DB에 등록된 파일 메타 정보를 조회합니다.
-     */
-    @GetMapping("/attachment/fileMetas/package/{packageFileName}")
-    public ResponseEntity<List<FilesMeta>> listAttachmentFileMetasByPackageFile(
-            @PathVariable("packageFileName") String packageFileName) {
-        List<FilesMeta> metas = fileUploadService.getFileMetasByPackageFileName(packageFileName);
-        return ResponseEntity.ok(metas);
-    }
 }

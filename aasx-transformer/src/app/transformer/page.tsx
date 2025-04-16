@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { listUploadedFiles } from "@/lib/api/fileUpload";
 // packageFileName을 인자로 받도록 변경된 listAttachmentFileMetas 함수
-import { downloadEnvironment, downloadFile, listAttachmentFileMetas } from "@/lib/api/fileDownload";
+import { downloadEnvironment, downloadFile, listAttachmentFileMetasByPackageFile, previewFile } from "@/lib/api/fileDownload";
 
+// 코드의 가독성과 유지보수성
 export interface FileMeta {
   hash: string;
   contentType: string;
@@ -39,12 +40,12 @@ const TransformerPage = () => {
     loadFiles();
   }, []);
 
-  // 선택된 패키지 파일이 변경되면 첨부파일 메타 정보를 불러옵니다.
+  // 선택된 패키지 파일이 변경되면 첨부파일 메타 정보를 불러옴
   useEffect(() => {
     const loadAttachmentMetas = async () => {
       if (!selectedPackageFile) return;
       try {
-        const fileMetas: FileMeta[] = await listAttachmentFileMetas(selectedPackageFile);
+        const fileMetas: FileMeta[] = await listAttachmentFileMetasByPackageFile(selectedPackageFile);
         setAttachmentFileMetas(fileMetas);
       } catch (error) {
         console.error("첨부파일 메타 정보를 가져오는 중 오류 발생:", error);
@@ -55,7 +56,7 @@ const TransformerPage = () => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
-      <div className="w-full max-w-4xl">
+      <div className="max-w-screen-xl">
         {/* 홈 버튼 */}
         <div className="flex items-start mb-4">
           <Link href="/">
@@ -75,16 +76,20 @@ const TransformerPage = () => {
           <CardContent>
             <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl">
               {uploadedFiles.length > 0 ? (
-                <ul>
-                  {uploadedFiles.map((file, idx) => (
-                    <li 
-                      key={idx} 
-                      
-                      onClick={() => setSelectedPackageFile(file)}
-                    >
-                      {file}
-                    </li>
-                  ))}
+                <ul className="w-full text-center">
+                  {uploadedFiles.map((file, idx) => {
+                    const isSelected = file === selectedPackageFile;
+                    return (
+                      <li
+                        key={idx}
+                        onClick={() => setSelectedPackageFile(file)}
+                        className={`cursor-pointer py-2 px-4 hover:underline min-h-[40px] ${isSelected ? "bg-blue-100 font-bold" : "bg-transparent"
+                          }`}
+                      >
+                        {file}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p>No uploaded AASX files found.</p>
@@ -96,7 +101,7 @@ const TransformerPage = () => {
         {/* 선택된 패키지 파일의 첨부파일 목록 – DB의 파일 메타 정보를 기반 */}
         <Card className="mt-12">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl md:text-3xl">
+            <CardTitle className="text-2xl">
               {selectedPackageFile}
             </CardTitle>
           </CardHeader>
@@ -105,30 +110,34 @@ const TransformerPage = () => {
               <table className="w-full table-auto border-collapse">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-center py-2">Hash</th>
-                    <th className="text-center py-2">Content Type</th>
-                    <th className="text-center py-2">Extension</th>
-                    <th className="text-center py-2">Action</th>
+                    <th className="text-center py-2 px-4">Hash</th>
+                    <th className="text-center py-2 px-4">ContentType</th>
+                    <th className="text-center py-2 px-4">Extension</th>
+                    <th className="text-center py-2 px-4">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attachmentFileMetas.map((meta, idx) => (
-                    <tr key={idx} className="border-b">
-                      <td className="text-center py-2">{meta.hash}</td>
-                      <td className="text-center py-2">{meta.contentType}</td>
-                      <td className="text-center py-2">{meta.extension}</td>
-                      <td className="py-2">
-                        <div className="flex justify-center gap-2">
-                          <Button size="sm" variant="outline">
-                            Viewer
-                          </Button>
-                          <Button size="sm" onClick={() => downloadFile(meta.hash)}>
-                            Download
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {attachmentFileMetas.map((meta, idx) => {
+                    // meta.hash와 meta.extension을 결합하여 전체 파일명 문자열 생성
+                    const fullHashAndExt = meta.hash + meta.extension;
+                    return (
+                      <tr key={idx} className="border-b">
+                        <td className="text-center py-2 px-4">{meta.hash}</td>
+                        <td className="text-center py-2 px-4">{meta.contentType}</td>
+                        <td className="text-center py-2 px-4">{meta.extension}</td>
+                        <td className="py-2 px-4">
+                          <div className="flex justify-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => previewFile(meta)}>
+                              Viewer
+                            </Button>
+                            <Button size="sm" onClick={() => downloadFile(fullHashAndExt)}>
+                              Download
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (

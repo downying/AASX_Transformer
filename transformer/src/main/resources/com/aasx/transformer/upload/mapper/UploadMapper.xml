@@ -7,7 +7,7 @@
     
     <!-- ✅ files 테이블 관련 -->
     <!-- 특정 해시의 파일 정보를 조회  -->
-    <select id="selectFileByHash" parameterType="String" resultType="com.aasx.transformer.upload.dto.Files">
+    <select id="selectFileByHash" parameterType="String" resultType="Files">
       <![CDATA[
       SELECT hash, ref_count AS refCount, size
       FROM files
@@ -21,9 +21,18 @@
       INSERT INTO files (hash, ref_count, size)
       VALUES (#{hash}, 1, #{size})
       ON CONFLICT(hash)
-      DO UPDATE SET ref_count = ref_count + 1
+      DO NOTHING
       ]]>
     </insert>
+
+    <!-- files 테이블의 ref_count 재계산 쿼리 -->
+    <update id="updateFileRefCount" parameterType="String">
+      <![CDATA[
+      UPDATE files
+      SET ref_count = (SELECT COUNT(*) FROM files_meta WHERE hash = #{hash})
+      WHERE hash = #{hash}
+      ]]>
+    </update>
 
     <!-- ref_count를 감소 시키기  -->
     <update id="decrementFileRefCount" parameterType="String">
@@ -45,7 +54,7 @@
 
     <!-- ✅ files_meta 테이블 관련 -->
     <!-- 특정 path(복합키: aas_id, submodel_id, idShort)로 파일 메타 조회 -->
-    <select id="selectFileMetaByPath" parameterType="map" resultType="com.aasx.transformer.upload.dto.FilesMeta">
+    <select id="selectFileMetaByPath" parameterType="map" resultType="FilesMeta">
       <![CDATA[
       SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
       FROM files_meta
@@ -54,7 +63,7 @@
     </select>
 
     <!-- 특정 해시에 해당하는 파일 메타 중 하나를 조회 -->
-    <select id="selectFileMetaByHashAndPath" parameterType="map" resultType="com.aasx.transformer.upload.dto.FilesMeta">
+    <select id="selectFileMetaByHashAndPath" parameterType="map" resultType="FilesMeta">
       <![CDATA[
       SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
       FROM files_meta
@@ -63,7 +72,7 @@
     </select>
 
     <!-- 파일 메타 신규 등록 -->
-    <insert id="insertFileMeta" parameterType="com.aasx.transformer.upload.dto.FilesMeta">
+    <insert id="insertFileMeta" parameterType="FilesMeta">
       <![CDATA[
       INSERT INTO files_meta (aas_id, submodel_id, idShort, name, extension, content_type, hash)
       VALUES (#{aasId}, #{submodelId}, #{idShort}, #{name}, #{extension}, #{contentType}, #{hash})
@@ -80,7 +89,7 @@
     </delete>
 
     <!-- 단일 hash 기반 파일 메타 조회 -->
-    <select id="selectOneFileMetaByHash" parameterType="String" resultType="com.aasx.transformer.upload.dto.FilesMeta">
+    <select id="selectOneFileMetaByHash" parameterType="String" resultType="FilesMeta">
       <![CDATA[
       SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
       FROM files_meta
