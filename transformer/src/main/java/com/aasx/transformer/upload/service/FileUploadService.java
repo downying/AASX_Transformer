@@ -81,8 +81,7 @@ public class FileUploadService {
             try {
                 // .aasx 파일만 처리
                 if (fileName == null || !fileName.toLowerCase().endsWith(".aasx")) {
-                    log.warn("AASX 형식이 아니므로 스킵: {}", fileName);
-                    continue;
+                    throw new IllegalArgumentException("AASX 파일(.aasx)만 업로드 가능합니다: " + fileName);
                 }
 
                 String filePath = uploadPath + File.separator + fileName;

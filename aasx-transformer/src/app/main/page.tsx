@@ -20,14 +20,23 @@ const MainPage = () => {
   // 파일 선택 input을 참조하기 위한 ref
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // ASX 체크 헬퍼
+  const isAasx = (file: File) =>
+    file.name.toLowerCase().endsWith(".aasx");
+
   // 파일 선택
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      const filesArray = Array.from(event.target.files);
-      setSelectedFiles((prevFiles) => [...prevFiles, ...filesArray]);
-      console.log("선택한 파일 : ", filesArray);
-      console.log("선택한 파일 (상태 업데이트 전):", selectedFiles);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const incoming = Array.from(e.target.files);
+
+    // 확장자 체크
+    const bad = incoming.find(f => !isAasx(f));
+    if (bad) {
+      alert('AASX 파일이 아닙니다.');
+      return;
     }
+
+    setSelectedFiles(prev => [...prev, ...incoming]);
   };
 
   // 드래그 앤드 드랍 파일 선택
@@ -51,8 +60,18 @@ const MainPage = () => {
     event.preventDefault();
     // 드래그 상태를 종료
     setIsDragging(false);
+
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
       const filesArray = Array.from(event.dataTransfer.files);
+
+      // 확장자 검사
+      const bad = filesArray.find((f) => !isAasx(f));
+      if (bad) {
+        alert('AASX 파일이 아닙니다.');
+        return;
+      }
+
+      // 모두 .aasx 면 상태에 추가
       setSelectedFiles((prevFiles) => [...prevFiles, ...filesArray]);
       console.log("드래그앤드랍으로 선택된 파일 : ", filesArray);
       console.log("선택한 파일 (상태 업데이트 전):", selectedFiles);
@@ -163,7 +182,7 @@ const MainPage = () => {
                       <Button
                         variant="destructive"
                         className="ml-2"
-                        onClick={(event) => handleDeleteFile(index, event)} 
+                        onClick={(event) => handleDeleteFile(index, event)}
                       >
                         Delete
                       </Button>
