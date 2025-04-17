@@ -6,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { listUploadedFiles } from "@/lib/api/fileUpload";
 // packageFileName을 인자로 받도록 변경된 listAttachmentFileMetas 함수
-import { downloadEnvironment, downloadFile, listAttachmentFileMetasByPackageFile, previewFile } from "@/lib/api/fileDownload";
+import { deleteAttachmentMeta, downloadEnvironment, downloadFile, listAttachmentFileMetasByPackageFile, previewFile } from "@/lib/api/fileDownload";
 
 // 코드의 가독성과 유지보수성
 export interface FileMeta {
+  aasId: string;
+  submodelId: string;
+  idShort: string;
   hash: string;
   contentType: string;
   extension: string;
@@ -53,6 +56,31 @@ const TransformerPage = () => {
     };
     loadAttachmentMetas();
   }, [selectedPackageFile]);
+
+  // 삭제 핸들러
+  const handleDelete = async (meta: FileMeta) => {
+    // 1) 삭제 전 확인
+    const confirmed = window.confirm("정말로 삭제하시겠습니까?");
+    if (!confirmed) {
+      return; // 취소하면 바로 종료
+    }
+
+    // 2) 서버에 삭제 요청
+    try {
+      await deleteAttachmentMeta(
+        `${meta.aasId}::${meta.submodelId}::${meta.idShort}`
+      );
+      // 3) 삭제 후, 최신 목록을 가져와서 화면 갱신
+      const updated = await listAttachmentFileMetasByPackageFile(
+        selectedPackageFile
+      );
+      setAttachmentFileMetas(updated);
+    } catch (e) {
+      console.error("삭제 실패:", e);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  };
+
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
@@ -132,6 +160,13 @@ const TransformerPage = () => {
                             </Button>
                             <Button size="sm" onClick={() => downloadFile(fullHashAndExt)}>
                               Download
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(meta)}
+                            >
+                              Delete
                             </Button>
                           </div>
                         </td>

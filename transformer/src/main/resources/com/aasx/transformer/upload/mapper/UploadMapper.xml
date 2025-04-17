@@ -26,6 +26,7 @@
     </insert>
 
     <!-- files 테이블의 ref_count 재계산 쿼리 -->
+    <!-- 감소하는 방식 말고 재계산 방식으로 안전하게 동작 -->
     <update id="updateFileRefCount" parameterType="String">
       <![CDATA[
       UPDATE files
@@ -35,13 +36,13 @@
     </update>
 
     <!-- ref_count를 감소 시키기  -->
-    <update id="decrementFileRefCount" parameterType="String">
+    <!-- <update id="decrementFileRefCount" parameterType="String">
       <![CDATA[
       UPDATE files
       SET ref_count = ref_count - 1
       WHERE hash = #{hash}
       ]]>
-    </update>
+    </update> -->
 
     <!-- ref_count가 0 이하인 파일 정보를 삭제  -->
     <delete id="deleteFileByHash" parameterType="String">

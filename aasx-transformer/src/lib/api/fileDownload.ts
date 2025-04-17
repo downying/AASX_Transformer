@@ -121,3 +121,11 @@ export const downloadFile = async (hash: string) => {
     throw new Error("파일 다운로드에 실패했습니다.");
   }
 };
+
+// 첨부파일 메타 삭제 API 호출
+export async function deleteAttachmentMeta(compositeKey: string) {
+  await axios.delete(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/delete/file`,
+    { params: { compositeKey } }
+  );
+}

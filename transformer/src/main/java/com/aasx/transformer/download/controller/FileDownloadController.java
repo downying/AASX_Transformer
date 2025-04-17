@@ -80,7 +80,7 @@ public class FileDownloadController {
     public ResponseEntity<Resource> downloadFile(@PathVariable("hashAndExt") String hashAndExt) {
         // 전달받은 파일명 문자열에서 점(.)을 기준으로 해시를 추출한 후, DB에 저장된 파일 메타를 사용하여 물리 파일 Resource를 가져옴
         // 예를 들어, 파일명이 "19b5caffb6a8a22427e5a947868d7910.png"이면,
-        // dotIndex : "19b5caffb6a8a22427e5a947868d7910"를 해시로 사용 
+        // dotIndex : "19b5caffb6a8a22427e5a947868d7910"를 해시로 사용
         int dotIndex = hashAndExt.lastIndexOf(".");
         if (dotIndex < 0) {
             throw new RuntimeException("잘못된 파일명 형식입니다.");
@@ -88,7 +88,8 @@ public class FileDownloadController {
         String hash = hashAndExt.substring(0, dotIndex);
         // 확장자 정보는 DB에 저장된 파일 메타를 통해 확인
         // 따라서 hash만 사용하여 다운로드 처리
-        // 클라이언트에서 호출할 때는, meta.hash와 meta.extension이 별도로 저장되어 있어 "hash + extension" 형태의 문자열을 전달
+        // 클라이언트에서 호출할 때는, meta.hash와 meta.extension이 별도로 저장되어 있어 "hash + extension" 형태의
+        // 문자열
         Resource resource = fileDownloadService.downloadFileByHash(hash);
         String fileName = resource.getFilename();
 
@@ -103,6 +104,18 @@ public class FileDownloadController {
         } catch (IOException e) {
             throw new RuntimeException("파일 다운로드 처리 중 오류 발생", e);
         }
+    }
+
+    /**
+     * ✅ 첨부파일 메타 삭제
+     * 
+     * @param compositeKey "aasId::submodelId::idShort" 형태의 복합키
+     */
+    @DeleteMapping("/delete/file")
+    public ResponseEntity<Void> deleteAttachmentMeta(@RequestParam("compositeKey") String compositeKey) {
+        log.info("삭제할 compositeKey = {}", compositeKey);
+        fileUploadService.deleteFileMeta(compositeKey);
+        return ResponseEntity.noContent().build();
     }
 
 }

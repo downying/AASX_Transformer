@@ -135,18 +135,21 @@ public class FileUploadService {
         for (int i = 0; i < uploadedFileNames.size(); i++) {
             String fileName = uploadedFileNames.get(i);
             Environment environment = uploadedEnvironments.get(i);
-            // Environment에서 참조된 파일 경로들 추출
+            // 1) AASX에서 참조된 파일 경로들 추출
             List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
 
-            // 참조 경로가 없다면 비어있는 리스트 매핑
+            // 2) 절대 URI(외부 URL)는 건너뛰기
+            paths.removeIf(p -> p.startsWith("http://") || p.startsWith("https://"));
+
+            // 3) 남은 상대 경로가 없으면 빈 리스트로 매핑
             if (paths.isEmpty()) {
                 inMemoryFilesMap.put(fileName, Collections.emptyList());
                 continue;
             }
-            // 실제 디스크에 저장된 AASX 파일 열기
+
+            // 4) OPCPackage로 AASX 내부 리소스 읽기
             String aasxFilePath = uploadPath + File.separator + fileName;
             File aasxFile = new File(aasxFilePath);
-            // OPCPackage로 AASX 내부 리소스를 읽어옴
             try (OPCPackage aasxRoot = OPCPackage.open(aasxFile)) {
                 List<InMemoryFile> inMemoryFiles = aasxFileDeserializer.readFiles(aasxRoot, paths);
                 inMemoryFilesMap.put(fileName, inMemoryFiles);
@@ -552,21 +555,39 @@ public class FileUploadService {
         String aasId = keys[0];
         String submodelId = keys[1];
         String idShort = keys[2];
+
+        // 1) 메타 조회
         FilesMeta meta = uploadMapper.selectFileMetaByPath(aasId, submodelId, idShort);
         if (meta == null) {
             log.warn("파일 메타가 존재하지 않음: {}", compositeKey);
             return;
         }
+
         String hash = meta.getHash();
-        // 파일 메타 삭제
+        String extension = meta.getExtension(); 
+
+        // 2) 메타 삭제 및 ref_count 감소
         uploadMapper.deleteFileMeta(aasId, submodelId, idShort);
         log.info("파일 메타 삭제됨: {}", compositeKey);
         uploadMapper.updateFileRefCount(hash);
+        
+        // 3) files 테이블에서 row 제거 조건 검사
         Files fileInfo = uploadMapper.selectFileByHash(hash);
         if (fileInfo == null || fileInfo.getRefCount() <= 0) {
             uploadMapper.deleteFileByHash(hash);
             log.info("ref_count 0으로 인해 files 테이블에서도 삭제됨: {}", hash);
+
+            // 4) 물리 디스크 파일 삭제
+            File physical = new File(uploadPath + File.separator + hash + extension);
+            if (physical.exists()) {
+                if (physical.delete()) {
+                    log.info("물리 첨부파일 삭제됨: {}", physical.getAbsolutePath());
+                } else {
+                    log.warn("물리 첨부파일 삭제 실패: {}", physical.getAbsolutePath());
+                }
+            } else {
+                log.warn("삭제할 물리 첨부파일이 없음: {}", physical.getAbsolutePath());
+            }
         }
     }
-
 }
