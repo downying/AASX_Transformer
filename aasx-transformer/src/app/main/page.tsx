@@ -20,7 +20,7 @@ const MainPage = () => {
   // 파일 선택 input을 참조하기 위한 ref
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // ASX 체크 헬퍼
+  // AASX 체크 헬퍼
   const isAasx = (file: File) =>
     file.name.toLowerCase().endsWith(".aasx");
 

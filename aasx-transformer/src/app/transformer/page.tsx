@@ -20,12 +20,14 @@ export interface FileMeta {
 }
 
 const TransformerPage = () => {
+  // 원래 업로드된 파일 목록
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   // 선택한 패키지 파일의 첨부파일 메타 정보 상태
   const [attachmentFileMetas, setAttachmentFileMetas] = useState<FileMeta[]>([]);
   // 현재 선택한 패키지 파일 (예: 목록에서 클릭한 파일)을 state로 관리
   const [selectedPackageFile, setSelectedPackageFile] = useState<string>("");
 
+  // 업로드된 파일 이름 가져오기
   useEffect(() => {
     const loadFiles = async () => {
       try {
