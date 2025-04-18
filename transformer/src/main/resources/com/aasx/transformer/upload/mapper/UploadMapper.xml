@@ -63,15 +63,6 @@
       ]]>
     </select>
 
-    <!-- 특정 해시에 해당하는 파일 메타 중 하나를 조회 -->
-    <select id="selectFileMetaByHashAndPath" parameterType="map" resultType="FilesMeta">
-      <![CDATA[
-      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
-      FROM files_meta
-      WHERE aas_id = #{aasId} AND submodel_id = #{submodelId} AND idShort = #{idShort} AND hash = #{hash}
-      ]]>
-    </select>
-
     <!-- 파일 메타 신규 등록 -->
     <insert id="insertFileMeta" parameterType="FilesMeta">
       <![CDATA[

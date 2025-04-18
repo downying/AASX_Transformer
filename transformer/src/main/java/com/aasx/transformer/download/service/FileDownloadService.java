@@ -69,8 +69,7 @@ public class FileDownloadService {
 
     /**
      * ✅ 재귀적으로 SubmodelElement 리스트(혹은 SubmodelElementCollection 내부)를 순회하며,
-     * File 요소를 찾고, 해당 요소의 복합키 (aasId, submodelId, idShort)를 이용해 DB에서 FilesMeta를 조회한
-     * 후 리스트에 추가
+     * File 요소를 찾고, 해당 요소의 복합키 (aasId, submodelId, idShort)를 이용해 DB에서 FilesMeta를 조회한 후 리스트에 추가
      */
     @SuppressWarnings("unchecked")
     private void collectFileMetasRecursive(List<SubmodelElement> elements, String aasId, String submodelId, List<FilesMeta> metas) {

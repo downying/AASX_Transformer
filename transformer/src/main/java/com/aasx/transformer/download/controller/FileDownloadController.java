@@ -33,7 +33,7 @@ public class FileDownloadController {
     private FileDownloadService fileDownloadService;
 
     /**
-     * 특정 패키지 파일에 속하는 첨부파일 메타 정보를 조회하는 엔드포인트
+     * ✅ 특정 패키지 파일에 속하는 첨부파일 메타 정보를 조회하는 엔드포인트
      * 
      * 업로드 시 저장된 Environment 내에서 각 File 요소의 복합키 (aas id, submodel id, idShort)를
      * 통해 DB에 등록된 파일 메타 정보를 조회

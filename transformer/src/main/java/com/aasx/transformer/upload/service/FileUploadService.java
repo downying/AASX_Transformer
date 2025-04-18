@@ -316,19 +316,28 @@ public class FileUploadService {
     // - findFileElementRecursive(List<SubmodelElement> elements, String
     // parentSubmodelId, String normalizedPath, String[] result)
     private String deriveCompositeKeyFromEnvironmentFull(Environment environment, String originalPath) {
-        // 조건에 맞는 AAS를 찾아서 ID를 반환하는 로직
-        String aasId;
+        // 환경 내 AAS들이 여러 개 있을 수 있으므로 idShort를 기준으로 해당하는 AAS의 id를 찾아야 함
+        String aasId = null;
+
         if (environment.getAssetAdministrationShells() == null
                 || environment.getAssetAdministrationShells().isEmpty()) {
             throw new RuntimeException("Environment에 등록된 AAS가 없습니다.");
         }
-        // 예시 조건: AAS의 idShort가 "targetAASName"과 일치하는 경우를 찾음.
-        // 필요에 따라 조건을 수정하세요.
-        aasId = environment.getAssetAdministrationShells().stream()
-                .filter(aas -> "targetAASName".equals(aas.getIdShort()))
-                .map(aas -> aas.getId())
-                .findFirst()
-                .orElse(environment.getAssetAdministrationShells().get(0).getId());
+
+        // 모든 AAS를 순회하며 idShort가 일치하는 AAS를 찾음
+        for (org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell aas : environment
+                .getAssetAdministrationShells()) {
+            if ("targetAASName".equals(aas.getIdShort())) { // 원하는 idShort를 찾는 조건
+                aasId = aas.getId();
+                break; // 일치하는 AAS를 찾으면 루프 종료
+            }
+        }
+
+        if (aasId == null) {
+            log.warn("targetAASName에 해당하는 AAS를 찾을 수 없습니다. 기본 AAS를 사용합니다.");
+            // 일치하는 AAS를 찾지 못한 경우 첫 번째 AAS의 id를 사용
+            aasId = environment.getAssetAdministrationShells().get(0).getId();
+        }
 
         String normalizedOriginalPath = normalizePath(originalPath);
         // Submodel 및 File 정보(파일 요소의 idShort 등)를 위한 임시 배열
@@ -563,13 +572,13 @@ public class FileUploadService {
         }
 
         String hash = meta.getHash();
-        String extension = meta.getExtension(); 
+        String extension = meta.getExtension();
 
         // 2) 메타 삭제 및 ref_count 감소
         uploadMapper.deleteFileMeta(aasId, submodelId, idShort);
         log.info("파일 메타 삭제됨: {}", compositeKey);
         uploadMapper.updateFileRefCount(hash);
-        
+
         // 3) files 테이블에서 row 제거 조건 검사
         Files fileInfo = uploadMapper.selectFileByHash(hash);
         if (fileInfo == null || fileInfo.getRefCount() <= 0) {
