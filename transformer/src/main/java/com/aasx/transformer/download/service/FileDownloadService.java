@@ -1,6 +1,9 @@
 package com.aasx.transformer.download.service;
 
+import org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
+import org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes;
+import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
@@ -54,25 +57,58 @@ public class FileDownloadService {
         }
         Environment environment = environments.get(index);
         List<FilesMeta> metas = new ArrayList<>();
-        String aasId = environment.getAssetAdministrationShells().get(0).getId();
 
         if (environment.getSubmodels() != null) {
             for (Submodel submodel : environment.getSubmodels()) {
                 String submodelId = submodel.getId();
-                // 재귀적으로 모든 File 요소를 수집
+
+                // 이 서브모델을 참조하는 AAS ID를 찾는다
+                String aasId = findAasIdForSubmodel(environment, submodelId);
+
+                // 실제 메타 수집
                 collectFileMetasRecursive(submodel.getSubmodelElements(), aasId, submodelId, metas);
+
+                log.info("Submodel '{}' 은 AAS Id'{}' 에 속함", aasId);
+                log.info("Submodel '{}' 은 Submodel Id'{}' 에 속함", submodelId);
             }
         }
-        log.info("패키지 파일 '{}' (AAS ID {}) 에 해당하는 첨부파일 메타 개수: {}", packageFileName, aasId, metas.size());
+
+        // 최종 메타 개수만 로깅 (aasId 변수 없애거나 for문 안에서만 사용)
+        log.info("패키지 파일 '{}' 에 해당하는 첨부파일 메타 총 {}건", packageFileName, metas.size());
         return metas;
     }
 
     /**
+     * 주어진 submodelId 를 참조하고 있는 AAS 를 찾아서 그 ID 를 반환.
+     * 없으면 기존처럼 첫 번째 AAS 를 fallback 으로 사용.
+     */
+    private String findAasIdForSubmodel(Environment env, String submodelId) {
+        if (env.getAssetAdministrationShells() != null) {
+            for (AssetAdministrationShell aas : env.getAssetAdministrationShells()) {
+                if (aas.getSubmodels() != null) {
+                    for (Reference ref : aas.getSubmodels()) {
+                        boolean matches = ref.getKeys().stream()
+                                .anyMatch(k -> KeyTypes.SUBMODEL.equals(k.getType())
+                                        && submodelId.equals(k.getValue()));
+                        if (matches) {
+                            return aas.getId();
+                        }
+                    }
+                }
+            }
+        }
+        // fallback: 첫 번째 AAS
+        return env.getAssetAdministrationShells().get(0).getId();
+    }
+
+    /**
      * ✅ 재귀적으로 SubmodelElement 리스트(혹은 SubmodelElementCollection 내부)를 순회하며,
-     * File 요소를 찾고, 해당 요소의 복합키 (aasId, submodelId, idShort)를 이용해 DB에서 FilesMeta를 조회한 후 리스트에 추가
+     * File 요소를 찾고, 해당 요소의 복합키 (aasId, submodelId, idShort)를 이용해 DB에서 FilesMeta를 조회한
+     * 후 리스트에 추가
      */
     @SuppressWarnings("unchecked")
-    private void collectFileMetasRecursive(List<SubmodelElement> elements, String aasId, String submodelId, List<FilesMeta> metas) {
+    private void collectFileMetasRecursive(List<SubmodelElement> elements, String aasId, String submodelId,
+            List<FilesMeta> metas) {
         if (elements == null)
             return;
 
