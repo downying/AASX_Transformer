@@ -318,34 +318,37 @@ public class FileUploadService {
     private String deriveCompositeKeyFromEnvironmentFull(Environment environment, String originalPath) {
         // 환경 내 AAS들이 여러 개 있을 수 있으므로 idShort를 기준으로 해당하는 AAS의 id를 찾아야 함
         String aasId = null;
-
+    
         if (environment.getAssetAdministrationShells() == null
                 || environment.getAssetAdministrationShells().isEmpty()) {
             throw new RuntimeException("Environment에 등록된 AAS가 없습니다.");
         }
-
-        // 모든 AAS를 순회하며 idShort가 일치하는 AAS를 찾음
+    
+        // AAS의 idShort에 해당하는 AAS를 찾기 위한 탐색
         for (org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell aas : environment
                 .getAssetAdministrationShells()) {
-            if ("targetAASName".equals(aas.getIdShort())) { // 원하는 idShort를 찾는 조건
+            // AAS의 idShort를 비교하여 해당하는 AAS를 찾음
+            if (originalPath != null && !originalPath.trim().isEmpty()) {
+                // 실제로 AAS에서 가져온 id를 사용하는 방식
                 aasId = aas.getId();
-                break; // 일치하는 AAS를 찾으면 루프 종료
+                log.info("aasId : {} ", aasId);
+                break;  // 일치하는 AAS를 찾으면 루프 종료
             }
         }
-
+    
+        // AAS ID가 없는 경우 기본 처리
         if (aasId == null) {
-            log.warn("targetAASName에 해당하는 AAS를 찾을 수 없습니다. 기본 AAS를 사용합니다.");
-            // 일치하는 AAS를 찾지 못한 경우 첫 번째 AAS의 id를 사용
+            log.info("해당 AAS가 없으므로 기본 AAS의 ID를 사용합니다.");
             aasId = environment.getAssetAdministrationShells().get(0).getId();
         }
-
+    
         String normalizedOriginalPath = normalizePath(originalPath);
         // Submodel 및 File 정보(파일 요소의 idShort 등)를 위한 임시 배열
         String[] result = new String[] { "", "" };
-
+    
         log.info("deriveCompositeKeyFromEnvironmentFull 시작: originalPath='{}', normalized='{}'",
                 originalPath, normalizedOriginalPath);
-
+    
         // 환경 내의 모든 Submodel을 순회하면서, 각 Submodel의 SubmodelElement 목록을 대상으로 재귀 탐색을 실시
         if (environment.getSubmodels() != null) {
             for (Submodel submodel : environment.getSubmodels()) {
@@ -362,7 +365,7 @@ public class FileUploadService {
                 }
             }
         }
-
+    
         // 탐색 결과가 없어서 result 배열의 값이 비어있다면, fallback 처리
         if (result[0].isEmpty() || result[1].isEmpty()) {
             log.warn("deriveCompositeKeyFromEnvironmentFull: 매칭되는 File 요소를 찾지 못함 for normalized originalPath: '{}'",
@@ -371,13 +374,13 @@ public class FileUploadService {
             result[0] = "fallbackSubmodel";
             result[1] = new File(originalPath).getName();
         }
-
+    
         // 최종적으로 "aasId::submodelId::idShort" 형식의 문자열을 생성하여 반환
         String compositeKey = aasId + "::" + result[0] + "::" + result[1];
         log.info("도출된 Composite Key: {}", compositeKey);
         return compositeKey;
     }
-
+    
     /**
      * ✅ 경로를 정규화
      * - 백슬래시를 슬래시로 변경
