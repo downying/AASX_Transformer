@@ -68,8 +68,6 @@ public class FileDownloadService {
                 // 실제 메타 수집
                 collectFileMetasRecursive(submodel.getSubmodelElements(), aasId, submodelId, metas);
 
-                log.info("Submodel '{}' 은 AAS Id'{}' 에 속함", aasId);
-                log.info("Submodel '{}' 은 Submodel Id'{}' 에 속함", submodelId);
             }
         }
 

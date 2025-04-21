@@ -40,12 +40,8 @@ public class FileDownloadController {
      */
     @GetMapping("/package/{packageFileName:.+}")
     public ResponseEntity<List<FilesMeta>> listAttachmentFileMetasByPackageFile(
-            @PathVariable("packageFileName") String packageFileName) {
+            @PathVariable String packageFileName) {
 
-        // 새 패키지 파일의 경우, 먼저 해시 계산 및 DB 업데이트(파일 메타 삽입)를 수행
-        fileUploadService.computeSHA256HashesForInMemoryFiles();
-
-        // 그 후, 업데이트된 파일 메타 정보를 조회
         List<FilesMeta> metas = fileDownloadService.getFileMetasByPackageFileName(packageFileName);
         return ResponseEntity.ok(metas);
     }

@@ -30,7 +30,11 @@ public class FileUploadController {
     @PostMapping("/aasx")
     public ResponseEntity<List<Environment>> uploadFiles(@RequestParam("files") MultipartFile[] files) {
         log.info("컨트롤러 - 요청된 파일 개수: {}", files.length);
+        // 1) AASX 파일 저장 + Environment 변환
         List<Environment> uploadResults = fileUploadService.uploadFiles(files);
+
+        // 2) 방금 업로드된 InMemoryFile 들에 대해 해시 계산 → DB 파일 메타 등록
+        fileUploadService.computeSHA256HashesForInMemoryFiles();
         return ResponseEntity.ok(uploadResults);
     }
 
