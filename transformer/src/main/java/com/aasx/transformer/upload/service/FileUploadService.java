@@ -377,7 +377,6 @@ public class FileUploadService {
         // 2) Asset default thumbnail 이 아닐 때, 기존 AAS ID 탐색 로직
         String aasId = null;
         for (AssetAdministrationShell shell : environment.getAssetAdministrationShells()) {
-            // TODO: 원하시는 기준(idShort 매칭 등)이 있으면 여기에 넣으세요.
             aasId = shell.getId();
             log.info("aasId : {}", aasId);
             break;
