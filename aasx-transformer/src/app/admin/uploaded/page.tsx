@@ -5,13 +5,10 @@ import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { previewFile } from '@/lib/api/fileDownload'
-
-// 환경 변수로 지정된 API 엔드포인트
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
+import { fetchUploadedFiles, previewFile } from '@/lib/api/fileDownload'
 
 // 서버에서 받아올 파일 정보 타입 정의
-interface FileEntry {
+export interface FileEntry {
   hash: string            // 파일 해시
   refCount: number        // 참조 횟수
   size: number            // 파일 크기 (bytes)
@@ -20,23 +17,22 @@ interface FileEntry {
 }
 
 export default function UploadedPage() {
-  const router = useRouter()
   const [files, setFiles] = useState<FileEntry[]>([])
   const [error, setError] = useState<string | null>(null)
 
   // 파일 목록 로드
   useEffect(() => {
-    fetchFiles()
+    loadFiles()
   }, [])
 
-  const fetchFiles = async () => {
-    try {
-      const response = await axios.get<FileEntry[]>(`${API_URL}/api/transformer/files`)
-      setFiles(response.data)
-    } catch (e: any) {
-      setError(e.message || 'Unknown error')
-    }
-  }
+  const loadFiles = async () => {
+      try {
+        const fileList = await fetchUploadedFiles();
+        setFiles(fileList);
+      } catch (e: any) {
+        setError(e.message || "Unknown error");
+      }
+    };
 
   if (error) {
     return <div className="p-6 text-red-500">Error: {error}</div>
@@ -44,7 +40,6 @@ export default function UploadedPage() {
 
   return (
     <div className="p-6 overflow-visible">
-      {/* 헤더: 페이지 타이틀 및 File Metadata 페이지로 이동 */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <h2 className="text-2xl font-bold">Uploaded Files</h2>
@@ -80,8 +75,8 @@ export default function UploadedPage() {
                   onClick={() =>
                     previewFile({
                       hash: file.hash,
-                      extension: file.extension || '',
-                      contentType: file.contentType || ''
+                      extension: file.extension || "",
+                      contentType: file.contentType || "",
                     })
                   }
                 >
@@ -89,19 +84,13 @@ export default function UploadedPage() {
                 </Button>
               </td>
 
-              {/* 해시 */}
               <td className="px-4 py-2 break-all">{file.hash}</td>
-
-              {/* 참조 횟수 */}
               <td className="px-4 py-2 text-center">{file.refCount}</td>
-
-              {/* 크기 */}
               <td className="px-4 py-2 text-right">{file.size}</td>
-
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-  )
+  );
 }

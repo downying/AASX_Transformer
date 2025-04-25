@@ -1,3 +1,5 @@
+import { FileMeta } from "@/app/admin/file_meta/page";
+import { FileEntry } from "@/app/admin/uploaded/page";
 import axios from "axios";
 
 // ✅ 특정 패키지 파일 내의 첨부파일 목록 조회 API 호출 함수
@@ -122,10 +124,39 @@ export const downloadFile = async (hash: string) => {
   }
 };
 
-// 첨부파일 메타 삭제 API 호출
+// ✅ 첨부파일 메타 삭제 API 호출
 export async function deleteAttachmentMeta(compositeKey: string) {
   await axios.delete(
     `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/delete/file`,
     { params: { compositeKey } }
   );
+}
+
+// ✅ 모든 파일 메타 조회 API 호출
+export async function fetchAllFileMetas(): Promise<FileMeta[]> {
+  try {
+    const response = await axios.get<FileMeta[]>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/file-metas`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMsg =
+      error.response?.data?.message || error.message || "알 수 없는 오류";
+    console.error("파일 메타 불러오기 실패:", errorMsg);
+    throw new Error("파일 메타 정보를 불러오는 중 오류 발생");
+  }
+}
+
+export async function fetchUploadedFiles(): Promise<FileEntry[]> {
+  try {
+    const response = await axios.get<FileEntry[]>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/files`
+    );
+    return response.data;
+  } catch (error: any) {
+    const errorMsg =
+      error.response?.data?.message || error.message || "알 수 없는 오류";
+    console.error("업로드 파일 목록 가져오기 실패:", errorMsg);
+    throw new Error("업로드된 파일 목록을 불러오는 중 오류 발생");
+  }
 }
