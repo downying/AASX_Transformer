@@ -11,4 +11,7 @@ public class Files {
     private String hash;
     private Long size;
     private Integer refCount;
+
+    private String extension;    
+    private String contentType;
 }

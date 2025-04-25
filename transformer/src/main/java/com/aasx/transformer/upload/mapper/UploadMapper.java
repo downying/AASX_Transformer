@@ -48,4 +48,10 @@ public interface UploadMapper {
 
     // 첨부파일 다운로드를 위한 해싱 값을 기준으로 파일 메타 정보 조회                    
     FilesMeta selectOneFileMetaByHash(@Param("hash") String hash);
+    
+    // ✅ 모든 파일 해시 및 메타 정보 조회 
+    List<Files> selectAllFileHash();
+
+    // ✅ 모든 파일 메타 정보 조회
+    List<FilesMeta> selectAllFileMetas();
 }

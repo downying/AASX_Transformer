@@ -89,5 +89,34 @@
       LIMIT 1
       ]]>
     </select>
-    
+
+    <!-- ✅ 모든 파일 해시 조회 -->
+    <select id="selectAllFileHash" resultType="Files">
+    <![CDATA[
+      SELECT
+        f.hash,
+        f.ref_count AS refCount,
+        f.size,
+        COALESCE(m.extension, '')     AS extension,
+        COALESCE(m.content_type, '')  AS contentType
+      FROM files f
+      LEFT JOIN (
+        SELECT hash,
+              MIN(extension)     AS extension,
+              MIN(content_type)  AS content_type
+          FROM files_meta
+        GROUP BY hash
+      ) m ON f.hash = m.hash
+    ]]>
+  </select>
+
+
+    <!-- ✅ 모든 파일 메타 정보 조회 -->
+    <select id="selectAllFileMetas" resultType="FilesMeta">
+    <![CDATA[
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      FROM files_meta
+    ]]>
+  </select>
+
 </mapper>

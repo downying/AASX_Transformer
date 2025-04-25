@@ -1,6 +1,7 @@
 package com.aasx.transformer.download.service;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell;
+import org.eclipse.digitaltwin.aas4j.v3.model.AssetInformation;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
@@ -21,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -71,13 +73,80 @@ public class FileDownloadService {
             }
         }
 
+        // --- Asset default thumbnail (reflection) 처리 ---
+        try {
+            for (AssetAdministrationShell shell : environment.getAssetAdministrationShells()) {
+                Object assetInfo = shell.getAssetInformation();
+                if (assetInfo == null)
+                    continue;
+
+                Method mThumb = assetInfo.getClass().getMethod("getDefaultThumbnail");
+                Object dataRes = mThumb.invoke(assetInfo);
+                if (dataRes == null)
+                    continue;
+
+                // getValue()/getPath() 로 경로 얻기 (기존 코드)
+                String thumbPath = null;
+                try {
+                    Method mVal = dataRes.getClass().getMethod("getValue");
+                    Object raw = mVal.invoke(dataRes);
+                    if (raw instanceof String)
+                        thumbPath = (String) raw;
+                } catch (Exception e1) {
+                    try {
+                        Method mP = dataRes.getClass().getMethod("getPath");
+                        Object raw2 = mP.invoke(dataRes);
+                        if (raw2 instanceof String)
+                            thumbPath = (String) raw2;
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (thumbPath == null)
+                    continue;
+
+                // compositeKey 정보
+                String aasId = shell.getId();
+                Method mGlobal = assetInfo.getClass().getMethod("getGlobalAssetId");
+                String globalAssetId = (String) mGlobal.invoke(assetInfo);
+                String idShort = new File(thumbPath).getName();
+
+                // DB 에서 메타 조회
+                FilesMeta thumbMeta = uploadMapper.selectFileMetaByPath(aasId, globalAssetId, idShort);
+                if (thumbMeta != null && metas.stream().noneMatch(m -> m.getHash().equals(thumbMeta.getHash()))) {
+                    // ↓ 여기서 실제 DefaultThumbnail 객체에서 contentType, extension 덮어쓰기 ↓
+
+                    // 1) contentType 추출
+                    try {
+                        Method mCT = dataRes.getClass().getMethod("getContentType");
+                        Object ctRaw = mCT.invoke(dataRes);
+                        if (ctRaw instanceof String) {
+                            thumbMeta.setContentType((String) ctRaw);
+                        }
+                    } catch (NoSuchMethodException | ClassCastException ignored) {
+                    }
+
+                    // 2) extension 덮어쓰기
+                    int dot = thumbPath.lastIndexOf('.');
+                    if (dot >= 0) {
+                        thumbMeta.setExtension(thumbPath.substring(dot));
+                    }
+
+                    metas.add(thumbMeta);
+                }
+
+                break; // 첫 AAS-thumbnail 하나만 처리하려면
+            }
+        } catch (Exception e) {
+            log.warn("DefaultThumbnail reflection 처리 중 오류: {}", e.toString());
+        }
+
         // 최종 메타 개수만 로깅 (aasId 변수 없애거나 for문 안에서만 사용)
         log.info("패키지 파일 '{}' 에 해당하는 첨부파일 메타 총 {}건", packageFileName, metas.size());
         return metas;
     }
 
     /**
-     * 주어진 submodelId 를 참조하고 있는 AAS 를 찾아서 그 ID 를 반환.
+     * ✅ 주어진 submodelId 를 참조하고 있는 AAS 를 찾아서 그 ID 를 반환.
      * 없으면 기존처럼 첫 번째 AAS 를 fallback 으로 사용.
      */
     private String findAasIdForSubmodel(Environment env, String submodelId) {
@@ -199,6 +268,13 @@ public class FileDownloadService {
         }
         log.info("다운로드할 파일 경로: {}", file.getAbsolutePath());
         return new FileSystemResource(file);
+    }
+
+    /**
+     * ✅ 해시에 대응하는 단일 FilesMeta를 DB에서 조회해서 반환
+     */
+    public FilesMeta getMetaByHash(String hash) {
+        return uploadMapper.selectOneFileMetaByHash(hash);
     }
 
 }

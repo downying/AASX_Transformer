@@ -71,34 +71,52 @@ public class FileDownloadController {
      * 
      * @param hash 다운로드할 파일의 SHA-256 해시값 (저장된 파일명)
      * @return 파일을 포함한 ResponseEntity
+     * 
+     * 브라우저에서 바로 파일을 열거나 저장
      */
-    @GetMapping("/download/{hashAndExt}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable("hashAndExt") String hashAndExt) {
-        // 전달받은 파일명 문자열에서 점(.)을 기준으로 해시를 추출한 후, DB에 저장된 파일 메타를 사용하여 물리 파일 Resource를 가져옴
-        // 예를 들어, 파일명이 "19b5caffb6a8a22427e5a947868d7910.png"이면,
-        // dotIndex : "19b5caffb6a8a22427e5a947868d7910"를 해시로 사용
-        int dotIndex = hashAndExt.lastIndexOf(".");
-        if (dotIndex < 0) {
-            throw new RuntimeException("잘못된 파일명 형식입니다.");
+    @GetMapping("/download/{hashAndExt:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String hashAndExt) {
+        // 1) Hash와 Extension 분리 시도
+        int dot = hashAndExt.lastIndexOf('.');
+        String hash;
+        String ext;
+        if (dot > 0) {
+            hash = hashAndExt.substring(0, dot);
+            ext = hashAndExt.substring(dot); // ".png" 등
+        } else {
+            // 확장자가 없이 호출된 경우
+            hash = hashAndExt;
+            // DB에서 메타를 먼저 조회하여 확장자를 꺼냄
+            FilesMeta meta0 = fileDownloadService.getMetaByHash(hash);
+            if (meta0 == null) {
+                return ResponseEntity.notFound().build();
+            }
+            ext = meta0.getExtension(); // ".jpg", ".pdf" 등
         }
-        String hash = hashAndExt.substring(0, dotIndex);
-        // 확장자 정보는 DB에 저장된 파일 메타를 통해 확인
-        // 따라서 hash만 사용하여 다운로드 처리
-        // 클라이언트에서 호출할 때는, meta.hash와 meta.extension이 별도로 저장되어 있어 "hash + extension" 형태의
-        // 문자열
-        Resource resource = fileDownloadService.downloadFileByHash(hash);
-        String fileName = resource.getFilename();
 
+        // 2) DB에서 메타 조회
+        FilesMeta meta = fileDownloadService.getMetaByHash(hash);
+        if (meta == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 3) 물리 파일 로드
+        Resource resource = fileDownloadService.downloadFileByHash(hash);
+
+        // 4) inline 미리보기 헤더 설정
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"");
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                "inline; filename=\"" + hash + ext + "\"");
+
+        MediaType mediaType = MediaType.parseMediaType(meta.getContentType());
         try {
             return ResponseEntity.ok()
                     .headers(headers)
                     .contentLength(resource.contentLength())
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .contentType(mediaType)
                     .body(resource);
         } catch (IOException e) {
-            throw new RuntimeException("파일 다운로드 처리 중 오류 발생", e);
+            throw new RuntimeException("파일 응답 처리 중 오류", e);
         }
     }
 
