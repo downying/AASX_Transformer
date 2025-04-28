@@ -70,9 +70,9 @@ export default function FileMetaPage() {
         <thead className="bg-gray-100">
           <tr>
             <th className="px-4 py-2 border-b">Preview</th>
-            <th className="px-4 py-2 border-b">AAS ID</th>
-            <th className="px-4 py-2 border-b">Submodel ID</th>
-            <th className="px-4 py-2 border-b">Id Short</th>
+            <th className="px-4 py-2 border-b">AAS Id</th>
+            <th className="px-4 py-2 border-b">Submodel Id</th>
+            <th className="px-4 py-2 border-b">IdShort</th>
             <th className="px-4 py-2 border-b">Name</th>
             <th className="px-4 py-2 border-b">Ext</th>
             <th className="px-4 py-2 border-b">Content Type</th>
