@@ -19,6 +19,8 @@ export interface FileMeta {
 export default function FileMetaPage() {
   const [data, setData] = useState<FileMeta[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMetas, setSelectedMetas] = useState<FileMeta[]>([]);
+
 
   // 파일 목록 로드
   useEffect(() => {
@@ -32,6 +34,38 @@ export default function FileMetaPage() {
     } catch (e: any) {
       setError(e.message || "Unknown error");
     }
+  };
+
+  // 체크박스 핸들러
+  const handleAttachmentCheckboxChange = (meta: FileMeta, checked: boolean) => {
+    if (checked) {
+      setSelectedMetas(prev => [...prev, meta]);
+    } else {
+      setSelectedMetas(prev => prev.filter(m => m.hash !== meta.hash));
+    }
+  };
+
+  // 전체 선택/해제
+  const handleSelectAllAttachments = (checked: boolean) => {
+    if (checked) {
+      setSelectedMetas(data);
+    } else {
+      setSelectedMetas([]);
+    }
+  };
+
+  // 여러 파일 한꺼번에 다운로드
+  const handleBatchDownloadAttachments = () => {
+    if (selectedMetas.length === 0) {
+      alert("선택된 파일이 없습니다.");
+      return;
+    }
+
+    selectedMetas.forEach(meta => {
+      const fullHashAndExt = meta.hash + meta.extension;
+      const downloadUrl = `/api/transformer/download/${fullHashAndExt}`;
+      window.open(downloadUrl, "_blank");
+    });
   };
 
   // 삭제 핸들러
@@ -53,22 +87,40 @@ export default function FileMetaPage() {
 
   return (
     <div className="p-6 overflow-visible">
+      {/* 상단 바 */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">All File Metadata</h2>
-        <Link href="/admin/uploaded">
+        <div className="flex gap-2">
+          <Link href="/admin/uploaded">
+            <Button
+              variant="default"
+              className="bg-blue-100 hover:bg-blue-200 cursor-pointer font-bold text-black border"
+            >
+              View Uploaded Files
+            </Button>
+          </Link>
           <Button
             variant="default"
-            className="bg-blue-100 hover:bg-blue-200 cursor-pointer font-bold text-black border"
+            className="bg-green-500 hover:bg-green-600 text-white font-bold"
+            onClick={handleBatchDownloadAttachments}
           >
-            Uploaded Files
+            Download Selected
           </Button>
-        </Link>
+
+        </div>
       </div>
 
       {/* 파일 리스트 테이블 */}
       <table className="min-w-full bg-white border border-gray-200">
         <thead className="bg-gray-100">
           <tr>
+            <th className="px-4 py-2 border-b text-center">
+              <input
+                type="checkbox"
+                checked={selectedMetas.length === data.length && data.length > 0}
+                onChange={(e) => handleSelectAllAttachments(e.target.checked)}
+              />
+            </th>
             <th className="px-4 py-2 border-b">Preview</th>
             <th className="px-4 py-2 border-b">AAS Id</th>
             <th className="px-4 py-2 border-b">Submodel Id</th>
@@ -80,11 +132,18 @@ export default function FileMetaPage() {
             <th className="px-4 py-2 border-b">Action</th>
           </tr>
         </thead>
+
         <tbody className="divide-y divide-gray-200">
           {data.map((meta, idx) => (
             <tr key={idx} className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-center">
+                <input
+                  type="checkbox"
+                  checked={selectedMetas.some(m => m.hash === meta.hash)}
+                  onChange={(e) => handleAttachmentCheckboxChange(meta, e.target.checked)}
+                />
+              </td>
               <td className="px-4 py-2">
-                {/* 미리보기 버튼 */}
                 <Button size="sm" variant="outline" onClick={() => previewFile(meta)}>
                   View
                 </Button>
@@ -97,7 +156,11 @@ export default function FileMetaPage() {
               <td className="px-4 py-2">{meta.contentType}</td>
               <td className="px-4 py-2 font-mono text-sm break-all">{meta.hash}</td>
               <td className="px-4 py-2">
-                <Button size="sm" variant="destructive" onClick={() => handleDelete(meta)}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDelete(meta)}
+                >
                   Delete
                 </Button>
               </td>
@@ -107,4 +170,5 @@ export default function FileMetaPage() {
       </table>
     </div>
   );
+
 }
