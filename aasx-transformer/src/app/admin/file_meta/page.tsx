@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { previewFile, deleteAttachmentMeta, fetchAllFileMetas } from "@/lib/api/fileDownload";
+import { downloadFile, previewFile, deleteAttachmentMeta, fetchAllFileMetas } from "@/lib/api/fileDownload";
 
 // 서버에서 받아올 파일 정보 타입 정의
 export interface FileMeta {
@@ -16,17 +16,21 @@ export interface FileMeta {
   hash: string;
 }
 
+// 복합키 생성 함수
+const generateCompositeKey = (meta: FileMeta) => 
+  `${meta.aasId}::${meta.submodelId}::${meta.idShort}`;
+
 export default function FileMetaPage() {
   const [data, setData] = useState<FileMeta[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMetas, setSelectedMetas] = useState<FileMeta[]>([]);
-
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]); // 복합키 기준 저장
 
   // 파일 목록 로드
   useEffect(() => {
     loadMeta();
   }, []);
 
+  // 파일 메타 데이터 불러오기
   const loadMeta = async () => {
     try {
       const metas = await fetchAllFileMetas();
@@ -36,35 +40,37 @@ export default function FileMetaPage() {
     }
   };
 
-  // 체크박스 핸들러
+  // 개별 체크박스 핸들러
   const handleAttachmentCheckboxChange = (meta: FileMeta, checked: boolean) => {
+    const key = generateCompositeKey(meta);
     if (checked) {
-      setSelectedMetas(prev => [...prev, meta]);
+      setSelectedKeys(prev => [...prev, key]);
     } else {
-      setSelectedMetas(prev => prev.filter(m => m.hash !== meta.hash));
+      setSelectedKeys(prev => prev.filter(k => k !== key));
     }
   };
 
-  // 전체 선택/해제
+  // 전체 선택/해제 핸들러
   const handleSelectAllAttachments = (checked: boolean) => {
     if (checked) {
-      setSelectedMetas(data);
+      setSelectedKeys(data.map(meta => generateCompositeKey(meta)));
     } else {
-      setSelectedMetas([]);
+      setSelectedKeys([]);
     }
   };
 
-  // 여러 파일 한꺼번에 다운로드
+  // 선택한 파일들 다운로드
   const handleBatchDownloadAttachments = () => {
-    if (selectedMetas.length === 0) {
+    if (selectedKeys.length === 0) {
       alert("선택된 파일이 없습니다.");
       return;
     }
 
-    selectedMetas.forEach(meta => {
-      const fullHashAndExt = meta.hash + meta.extension;
-      const downloadUrl = `/api/transformer/download/${fullHashAndExt}`;
-      window.open(downloadUrl, "_blank");
+    selectedKeys.forEach(key => {
+      const meta = data.find(m => generateCompositeKey(m) === key);
+      if (meta) {
+        downloadFile(meta.hash + meta.extension);
+      }
     });
   };
 
@@ -72,9 +78,9 @@ export default function FileMetaPage() {
   const handleDelete = async (meta: FileMeta) => {
     if (!window.confirm("정말로 이 메타를 삭제하시겠습니까?")) return;
     try {
-      const compositeKey = `${meta.aasId}::${meta.submodelId}::${meta.idShort}`;
+      const compositeKey = generateCompositeKey(meta);
       await deleteAttachmentMeta(compositeKey);
-      await loadMeta(); // 삭제 후 목록 갱신
+      await loadMeta(); // 삭제 후 목록 새로고침
     } catch (e) {
       console.error("삭제 실패:", e);
       alert("삭제 중 오류가 발생했습니다.");
@@ -106,7 +112,6 @@ export default function FileMetaPage() {
           >
             Download Selected
           </Button>
-
         </div>
       </div>
 
@@ -117,7 +122,7 @@ export default function FileMetaPage() {
             <th className="px-4 py-2 border-b text-center">
               <input
                 type="checkbox"
-                checked={selectedMetas.length === data.length && data.length > 0}
+                checked={selectedKeys.length === data.length && data.length > 0}
                 onChange={(e) => handleSelectAllAttachments(e.target.checked)}
               />
             </th>
@@ -134,41 +139,43 @@ export default function FileMetaPage() {
         </thead>
 
         <tbody className="divide-y divide-gray-200">
-          {data.map((meta, idx) => (
-            <tr key={idx} className="hover:bg-gray-50">
-              <td className="px-4 py-2 text-center">
-                <input
-                  type="checkbox"
-                  checked={selectedMetas.some(m => m.hash === meta.hash)}
-                  onChange={(e) => handleAttachmentCheckboxChange(meta, e.target.checked)}
-                />
-              </td>
-              <td className="px-4 py-2">
-                <Button size="sm" variant="outline" onClick={() => previewFile(meta)}>
-                  View
-                </Button>
-              </td>
-              <td className="px-4 py-2 break-all">{meta.aasId}</td>
-              <td className="px-4 py-2 break-all">{meta.submodelId}</td>
-              <td className="px-4 py-2">{meta.idShort}</td>
-              <td className="px-4 py-2">{meta.name}</td>
-              <td className="px-4 py-2">{meta.extension}</td>
-              <td className="px-4 py-2">{meta.contentType}</td>
-              <td className="px-4 py-2 font-mono text-sm break-all">{meta.hash}</td>
-              <td className="px-4 py-2">
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleDelete(meta)}
-                >
-                  Delete
-                </Button>
-              </td>
-            </tr>
-          ))}
+          {data.map((meta, idx) => {
+            const key = generateCompositeKey(meta);
+            return (
+              <tr key={idx} className="hover:bg-gray-50">
+                <td className="px-4 py-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedKeys.includes(key)}
+                    onChange={(e) => handleAttachmentCheckboxChange(meta, e.target.checked)}
+                  />
+                </td>
+                <td className="px-4 py-2 text-center">
+                  <Button size="sm" variant="outline" onClick={() => previewFile(meta)}>
+                    View
+                  </Button>
+                </td>
+                <td className="px-4 py-2 break-all">{meta.aasId}</td>
+                <td className="px-4 py-2 break-all">{meta.submodelId}</td>
+                <td className="px-4 py-2">{meta.idShort}</td>
+                <td className="px-4 py-2">{meta.name}</td>
+                <td className="px-4 py-2">{meta.extension}</td>
+                <td className="px-4 py-2">{meta.contentType}</td>
+                <td className="px-4 py-2 font-mono text-sm break-all">{meta.hash}</td>
+                <td className="px-4 py-2">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(meta)}
+                  >
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
-
 }
