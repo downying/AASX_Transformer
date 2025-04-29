@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import axios from 'axios'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { downloadFile, fetchUploadedFiles, previewFile } from '@/lib/api/fileDownload'
@@ -19,56 +17,62 @@ export interface FileEntry {
 export default function UploadedPage() {
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<FileEntry[]>([]);
-  const [selectedMetas, setSelectedMetas] = useState<FileEntry[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<FileEntry[]>([]);
+
+  const [currentPage, setCurrentPage] = useState(0); // 페이지 번호
+  const [pageSize] = useState(20);                  // 한 페이지당 항목 수
+  const [totalCount, setTotalCount] = useState(0);  // 전체 개수
 
   // 파일 목록 로드
   useEffect(() => {
-    loadFiles()
-  }, [])
+    loadFiles();
+  }, [currentPage]);
 
   // 해시값 기준 파일 데이터 불러오기
   const loadFiles = async () => {
     try {
-      const fileList = await fetchUploadedFiles();
-      setFiles(fileList);
+      const res = await fetchUploadedFiles(currentPage * pageSize, pageSize);
+      setFiles(res.items);
+      setTotalCount(res.totalCount);
     } catch (e: any) {
       setError(e.message || "Unknown error");
     }
   };
 
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
   // 개별 체크박스 핸들러
-  const handleAttachmentCheckboxChange = (meta: FileEntry, checked: boolean) => {
+  const handleAttachmentCheckboxChange = (file: FileEntry, checked: boolean) => {
     if (checked) {
-      setSelectedMetas(prev => [...prev, meta]);
+      setSelectedFiles(prev => [...prev, file]);
     } else {
-      setSelectedMetas(prev => prev.filter(m => m.hash !== meta.hash));
+      setSelectedFiles(prev => prev.filter(f => f.hash !== file.hash));
     }
   };
 
   // 전체 선택/해제 핸들러
   const handleSelectAllAttachments = (checked: boolean) => {
     if (checked) {
-      setSelectedMetas(files);
+      setSelectedFiles(files);
     } else {
-      setSelectedMetas([]);
+      setSelectedFiles([]);
     }
   };
 
   // 선택한 파일들 다운로드
   const handleBatchDownloadAttachments = () => {
-    if (selectedMetas.length === 0) {
+    if (selectedFiles.length === 0) {
       alert("선택된 파일이 없습니다.");
       return;
     }
 
-    selectedMetas.forEach(meta => {
-      downloadFile(meta.hash + meta.extension);
+    selectedFiles.forEach(file => {
+      downloadFile(file.hash + file.extension);
     });
   };
-
-  if (error) {
-    return <div className="p-6 text-red-500">Error: {error}</div>
-  }
 
   return (
     <div className="p-6 overflow-visible">
@@ -100,7 +104,7 @@ export default function UploadedPage() {
             <th className="px-4 py-2 border-b text-center">
               <input
                 type="checkbox"
-                checked={selectedMetas.length === files.length && files.length > 0}
+                checked={selectedFiles.length === files.length && files.length > 0}
                 onChange={(e) => handleSelectAllAttachments(e.target.checked)}
               />
             </th>
@@ -116,7 +120,7 @@ export default function UploadedPage() {
               <td className="px-4 py-2 text-center">
                 <input
                   type="checkbox"
-                  checked={selectedMetas.some(m => m.hash === file.hash)}
+                  checked={selectedFiles.some(m => m.hash === file.hash)}
                   onChange={(e) => handleAttachmentCheckboxChange(file, e.target.checked)}
                 />
               </td>
@@ -143,6 +147,20 @@ export default function UploadedPage() {
           ))}
         </tbody>
       </table>
+
+      {/* Pagination */}
+      <div className="mt-4 flex justify-center gap-2">
+        {Array.from({ length: Math.ceil(totalCount / pageSize) }).map((_, i) => (
+          <Button
+            key={i}
+            size="sm"
+            variant={i === currentPage ? "default" : "outline"}
+            onClick={() => handlePageChange(i)}
+          >
+            {i + 1}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -107,6 +107,9 @@
           FROM files_meta
         GROUP BY hash
       ) m ON f.hash = m.hash
+      ORDER BY f.hash
+      LIMIT #{limit}
+      OFFSET #{offset}
     ]]>
   </select>
 
@@ -116,7 +119,27 @@
     <![CDATA[
       SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
       FROM files_meta
+      LIMIT #{limit} OFFSET #{offset}
     ]]>
   </select>
+
+
+
+  <!-- files 테이블 총 개수 조회 -->
+  <select id="countFiles" resultType="int">
+    <![CDATA[
+      SELECT COUNT(*)
+      FROM files
+    ]]>
+  </select>
+
+  <!-- files_meta 테이블 총 개수 조회 -->
+  <select id="countFileMetas" resultType="int">
+    <![CDATA[
+      SELECT COUNT(*)
+      FROM files_meta
+    ]]>
+  </select>
+
 
 </mapper>

@@ -28,30 +28,37 @@ public interface UploadMapper {
 
     // ✅ filesMeta
     // 복합 키(aas_id, submodel_id, idShort)로 파일 메타 조회
-    FilesMeta selectFileMetaByPath(@Param("aasId") String aasId, 
-                                  @Param("submodelId") String submodelId, 
-                                  @Param("idShort") String idShort);
+    FilesMeta selectFileMetaByPath(@Param("aasId") String aasId,
+            @Param("submodelId") String submodelId,
+            @Param("idShort") String idShort);
 
     // 특정 해시와 복합 키 조건에 해당하는 파일 메타 정보를 조회 (다운로드 시 사용)
     FilesMeta selectFileMetaByHashAndKey(@Param("hash") String hash,
-                                         @Param("aasId") String aasId, 
-                                         @Param("submodelId") String submodelId, 
-                                         @Param("idShort") String idShort);
+            @Param("aasId") String aasId,
+            @Param("submodelId") String submodelId,
+            @Param("idShort") String idShort);
 
     // 파일 메타 신규 등록 (path는 AASId/SubmodelId/Idshort 형식)
     int insertFileMeta(FilesMeta filesMeta);
 
     // 파일 메타 삭제
-    int deleteFileMeta(@Param("aasId") String aasId, 
-                       @Param("submodelId") String submodelId, 
-                       @Param("idShort") String idShort);
+    int deleteFileMeta(@Param("aasId") String aasId,
+            @Param("submodelId") String submodelId,
+            @Param("idShort") String idShort);
 
-    // 첨부파일 다운로드를 위한 해싱 값을 기준으로 파일 메타 정보 조회                    
+    // 첨부파일 다운로드를 위한 해싱 값을 기준으로 파일 메타 정보 조회
     FilesMeta selectOneFileMetaByHash(@Param("hash") String hash);
-    
-    // ✅ 모든 파일 해시 및 메타 정보 조회 
-    List<Files> selectAllFileHash();
+
+    // ✅ 모든 파일 해시 및 메타 정보 조회
+    List<Files> selectAllFileHash(@Param("offset") int offset, @Param("limit") int limit);
 
     // ✅ 모든 파일 메타 정보 조회
-    List<FilesMeta> selectAllFileMetas();
+    List<FilesMeta> selectAllFileMetas(@Param("offset") int offset, @Param("limit") int limit);
+
+    // files 테이블 전체 개수 조회
+    int countFiles();
+
+    // files_meta 테이블 전체 개수 조회
+    int countFileMetas();
+
 }

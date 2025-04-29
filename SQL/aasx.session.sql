@@ -27,3 +27,18 @@ DROP TABLE files_meta;
 
 SELECT * FROM files;
 SELECT * FROM files_meta;
+
+ SELECT
+        f.hash,
+        f.ref_count AS refCount,
+        f.size,
+        COALESCE(m.extension, '')     AS extension,
+        COALESCE(m.content_type, '')  AS contentType
+      FROM files f
+      LEFT JOIN (
+        SELECT hash,
+              MIN(extension)     AS extension,
+              MIN(content_type)  AS content_type
+          FROM files_meta
+        GROUP BY hash
+      ) m ON f.hash = m.hash;

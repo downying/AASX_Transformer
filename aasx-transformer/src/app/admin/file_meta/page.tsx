@@ -17,7 +17,7 @@ export interface FileMeta {
 }
 
 // 복합키 생성 함수
-const generateCompositeKey = (meta: FileMeta) => 
+const generateCompositeKey = (meta: FileMeta) =>
   `${meta.aasId}::${meta.submodelId}::${meta.idShort}`;
 
 export default function FileMetaPage() {
@@ -25,19 +25,29 @@ export default function FileMetaPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]); // 복합키 기준 저장
 
+  const [currentPage, setCurrentPage] = useState(0); // 페이지 번호
+  const [pageSize] = useState(20);                  // 한 페이지당 항목 수
+  const [totalCount, setTotalCount] = useState(0);  // 전체 개수
+
   // 파일 목록 로드
   useEffect(() => {
     loadMeta();
-  }, []);
+  }, [currentPage]);
 
   // 파일 메타 데이터 불러오기
   const loadMeta = async () => {
     try {
-      const metas = await fetchAllFileMetas();
-      setData(metas);
+      const res = await fetchAllFileMetas(currentPage * pageSize, pageSize);
+      setData(res.items);
+      setTotalCount(res.totalCount);
     } catch (e: any) {
       setError(e.message || "Unknown error");
     }
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
 
   // 개별 체크박스 핸들러
@@ -176,6 +186,20 @@ export default function FileMetaPage() {
           })}
         </tbody>
       </table>
+
+      {/* Pagination */}
+      <div className="mt-4 flex justify-center gap-2">
+        {Array.from({ length: Math.ceil(totalCount / pageSize) }).map((_, i) => (
+          <Button
+            key={i}
+            size="sm"
+            variant={i === currentPage ? "default" : "outline"}
+            onClick={() => handlePageChange(i)}
+          >
+            {i + 1}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

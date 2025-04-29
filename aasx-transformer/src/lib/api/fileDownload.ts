@@ -133,30 +133,33 @@ export async function deleteAttachmentMeta(compositeKey: string) {
 }
 
 // ✅ 모든 파일 메타 조회 API 호출
-export async function fetchAllFileMetas(): Promise<FileMeta[]> {
+// offset, limit 받도록 수정
+export async function fetchAllFileMetas(offset: number, limit: number): Promise<{ items: FileMeta[], totalCount: number }> {
   try {
-    const response = await axios.get<FileMeta[]>(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/file-metas`
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/file-metas`,
+      { params: { offset, limit } }
     );
-    return response.data;
+    return response.data; // { items, totalCount }
   } catch (error: any) {
-    const errorMsg =
-      error.response?.data?.message || error.message || "알 수 없는 오류";
+    const errorMsg = error.response?.data?.message || error.message || "알 수 없는 오류";
     console.error("파일 메타 불러오기 실패:", errorMsg);
     throw new Error("파일 메타 정보를 불러오는 중 오류 발생");
   }
 }
 
-export async function fetchUploadedFiles(): Promise<FileEntry[]> {
+// ✅ 업로드 파일 조회 (offset, limit 지원)
+export async function fetchUploadedFiles(offset: number, limit: number): Promise<{ items: FileEntry[], totalCount: number }> {
   try {
-    const response = await axios.get<FileEntry[]>(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/files`
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/files`,
+      { params: { offset, limit } }
     );
-    return response.data;
+    return response.data; // { items, totalCount }
   } catch (error: any) {
-    const errorMsg =
-      error.response?.data?.message || error.message || "알 수 없는 오류";
+    const errorMsg = error.response?.data?.message || error.message || "알 수 없는 오류";
     console.error("업로드 파일 목록 가져오기 실패:", errorMsg);
     throw new Error("업로드된 파일 목록을 불러오는 중 오류 발생");
   }
 }
+
