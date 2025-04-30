@@ -22,7 +22,7 @@ export default function AdminPage() {
       </Link>
 
       {/* 파일 메타 화면으로 이동하는 카드 */}
-      <Link href="/admin/file_meta">
+      <Link href="/admin/file-meta">
         <Card className="w-48 h-48 bg-green-100 hover:bg-green-200 cursor-pointer rounded-xl border shadow text-card-foreground">
           <CardContent className="p-0 flex flex-col items-center justify-center space-y-2 h-full">
             <FileText className="w-12 h-12 text-green-600" />

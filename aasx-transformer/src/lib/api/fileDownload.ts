@@ -1,4 +1,4 @@
-import { FileMeta } from "@/app/admin/file_meta/page";
+import { FileMeta } from "@/app/admin/file-meta/page";
 import { FileEntry } from "@/app/admin/uploaded/page";
 import axios from "axios";
 

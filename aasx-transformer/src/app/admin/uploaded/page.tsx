@@ -79,7 +79,7 @@ export default function UploadedPage() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Uploaded Files</h2>
         <div className="flex gap-2">
-          <Link href="/admin/file_meta">
+          <Link href="/admin/file-meta">
             <Button
               variant="default"
               className="bg-green-100 hover:bg-green-200 cursor-pointer font-bold text-black border"
