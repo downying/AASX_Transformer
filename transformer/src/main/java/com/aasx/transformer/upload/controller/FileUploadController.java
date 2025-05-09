@@ -1,12 +1,20 @@
 package com.aasx.transformer.upload.controller;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.core.io.Resource;
 
 import com.aasx.transformer.upload.service.FileUploadService;
+import com.aasx.transformer.upload.service.JsonToAASXService;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
 
 import java.io.FileInputStream;
@@ -16,6 +24,8 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.DeserializationException;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.SerializationException;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 
 @Slf4j
@@ -25,6 +35,9 @@ public class FileUploadController {
 
     @Autowired
     private FileUploadService fileUploadService;
+
+    @Autowired
+    private JsonToAASXService jsonToAasxService;
 
     // ✅ 여러 개의 파일 업로드
     @PostMapping("/aasx")
@@ -46,54 +59,21 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadedFileNames);
     }
 
-    //
-    /*
-     * ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
-     * 
-     * @GetMapping("/aasx/referenced-paths")
-     * public ResponseEntity<Map<String, List<String>>> getReferencedFilePaths() {
-     * Map<String, List<String>> filePathsMap =
-     * fileUploadService.getReferencedFilePaths();
-     * log.info("컨트롤러 - 파일별 참조된 파일 경로 조회: {}", filePathsMap);
-     * return ResponseEntity.ok(filePathsMap);
-     * }
-     */
+    // ✅ JSON 파일을 받아서 AASX 패키지로 변환
+    @PostMapping("/json")
+    public ResponseEntity<List<Environment>> uploadJson(
+            @RequestParam("files") MultipartFile[] files) {
 
-    /*
-     * ✅ InMemoryFile로 변환
-     * 
-     * @GetMapping("/aasx/referenced-inmemoryfiles")
-     * public ResponseEntity<Map<String, List<InMemoryFile>>>
-     * getReferencedInMemoryFiles() {
-     * Map<String, List<InMemoryFile>> inMemoryFilesMap =
-     * fileUploadService.getInMemoryFilesFromReferencedPaths();
-     * // log.info("컨트롤러 - 파일별 InMemoryFile 목록 조회: {}", inMemoryFilesMap);
-     * return ResponseEntity.ok(inMemoryFilesMap);
-     * }
-     */
+        log.info("컨트롤러 - JSON 파일 개수: {}", files.length);
+        List<Environment> envs = jsonToAasxService.uploadJsonFiles(files);
 
-    /*
-     * ✅ SHA-256 해시값 계산
-     * 
-     * @GetMapping("/aasx/sha256-hashes")
-     * public ResponseEntity<Map<String, List<String>>>
-     * getSHA256HashesForInMemoryFiles() {
-     * Map<String, List<String>> sha256Hashes =
-     * fileUploadService.computeSHA256HashesForInMemoryFiles();
-     * log.info("컨트롤러 - 파일별 SHA-256 해시값 조회: {}", sha256Hashes);
-     * return ResponseEntity.ok(sha256Hashes);
-     * }
-     */
+        // 파싱된 환경(Environment) 개수가 업로드한 파일 개수와 다르면 오류
+        if (envs.size() != files.length) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "일부 JSON 파일 파싱에 실패했습니다: 성공 " + envs.size() + " / 요청 " + files.length);
+        }
 
-    /*
-     * ✅ 동일 파일 검색
-     * 
-     * @GetMapping("/aasx/sha256-hashes")
-     * public ResponseEntity<Map<String, List<String>>> getSHA256HashesMap() {
-     * Map<String, List<String>> result =
-     * fileUploadService.computeSHA256HashesForInMemoryFiles();
-     * log.info("컨트롤러 - 파일별 SHA-256 해시 및 중복 파일 정보 조회: {}", result);
-     * return ResponseEntity.ok(result);
-     * }
-     */
+        return ResponseEntity.ok(envs);
+    }
 }

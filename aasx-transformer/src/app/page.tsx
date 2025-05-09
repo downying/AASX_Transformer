@@ -1,6 +1,6 @@
 import React from "react";
-import Link from "next/link";  
-import { Button } from "@/components/ui/button"; 
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 // 초기 화면 
 const Start = () => {
@@ -11,11 +11,18 @@ const Start = () => {
           Hello
         </div>
       </div>
-      <div className="w-60 justify-center items-center gap-4 inline-flex mt-6">
-        {/* 메인 화면으로 이동 */}
+      <div className="w-full justify-center items-center gap-6 inline-flex mt-6 flex-col">
+        {/* Upload AASX 버튼 */}
         <Link href="/main" passHref>
-          <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white w-40" variant="default">
-            Start
+          <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white w-[300px] text-lg" variant="default">
+            Upload AASX
+          </Button>
+        </Link>
+
+        {/* Upload JSON 버튼 */}
+        <Link href="/main/uploadJSON" passHref>
+          <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white w-[300px] text-lg" variant="default">
+            Upload JSON
           </Button>
         </Link>
       </div>

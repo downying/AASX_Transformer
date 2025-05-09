@@ -1,4 +1,7 @@
 import axios from "axios";
+import { Environment } from "./Environment";
+
+
 
 // ✅ 파일 업로드
 export const uploadFile = async (formData: FormData) => {
@@ -60,115 +63,20 @@ export const listUploadedFiles = async () => {
   }
 };
 
-/* ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
-  export const getReferencedFilePaths = async () => {
+
+// ✅ JSON 파일 업로드
+export const uploadJsonFiles = async (formData: FormData): Promise<Environment[]> => {
   try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/referenced-paths`
+    const response = await axios.post<Environment[]>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
     );
-    console.log("API - 파일별 참조된 경로 서버 응답:", response.data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      console.error("서버 오류:", error.response.data);
-      throw new Error(`참조된 파일 경로를 가져오는 데 실패했습니다: ${error.response.data}`);
-    } else {
-      console.error("요청 오류:", error);
-      throw new Error("참조된 파일 경로를 가져오는 데 실패했습니다: 네트워크 오류");
+      throw new Error(error.response.data.message || JSON.stringify(error.response.data));
     }
-  }
-}; */
-
-
-/* ✅ InMemoryFile 조회
-  export const getReferencedInMemoryFiles = async () => {
-  try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/referenced-inmemoryfiles`
-    );
-    console.log("API - InMemoryFile Map 서버 응답:", response.data);
-    return response.data; // { [fileName: string]: InMemoryFile[] }
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("서버 오류:", error.response.data);
-      throw new Error(
-        `참조된 파일(InMemoryFile)을 가져오는 데 실패했습니다: ${error.response.data}`
-      );
-    } else {
-      console.error("요청 오류:", error);
-      throw new Error("참조된 파일(InMemoryFile)을 가져오는 데 실패했습니다: 네트워크 오류");
-    }
+    throw new Error("JSON 업로드 실패: 네트워크 오류");
   }
 };
- */
-
-/* ✅ InMemoryFile 조회를 위한 설정
-  export interface InMemoryFile {
-  fileContent: Uint8Array ; // InMemoryFile 데이터: 바이트 배열
-  path: string;    // AASX 내 파일 경로 (/aasx/files/... 등)
-} */
-
-
-/* ✅ SHA-256 해시값 조회
-  export const getSHA256HashesForInMemoryFiles = async () => {
-  try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/sha256-hashes`
-    );
-    console.log("API - SHA256 해시 서버 응답:", response.data);
-    return response.data; // { [fileName: string]: string[] } 
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("서버 오류:", error.response.data);
-      throw new Error(
-        `SHA256 해시값을 가져오는 데 실패했습니다: ${error.response.data}`
-      );
-    } else {
-      console.error("요청 오류:", error);
-      throw new Error("SHA256 해시값을 가져오는 데 실패했습니다: 네트워크 오류");
-    }
-  }
-}; */
-
-// ✅ 동일 파일 검색
-/* export const getSHA256HashesMap = async () => {
-  try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx/sha256-hashes`
-    );
-    console.log("API - SHA256 해시 서버 응답:", response.data);
-    return response.data; // { [fileName: string]: string[] } 
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("서버 오류:", error.response.data);
-      throw new Error(
-        `SHA256 해시값을 가져오는 데 실패했습니다: ${error.response.data}`
-      );
-    } else {
-      console.error("요청 오류:", error);
-      throw new Error("SHA256 해시값을 가져오는 데 실패했습니다: 네트워크 오류");
-    }
-  }
-}; */
-
-// ✅ 업로드된 AASX 파일에서 참조된 파일 경로 조회
-/* export const getUpdatedEnvironments = async () => {
-  try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/download`
-    );
-    console.log("API - 업데이트된 환경 데이터 서버 응답:", response.data);
-    return response.data; // { [fileName: string]: string[] }
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("서버 오류:", error.response.data);
-      throw new Error(
-        `업데이트된 환경 데이터를 가져오는 데 실패했습니다: ${error.response.data}`
-      );
-    } else {
-      console.error("요청 오류:", error);
-      throw new Error("업데이트된 환경 데이터를 가져오는 데 실패했습니다: 네트워크 오류");
-    }
-  }
-};
- */

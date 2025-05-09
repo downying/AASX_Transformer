@@ -32,12 +32,6 @@ public interface UploadMapper {
             @Param("submodelId") String submodelId,
             @Param("idShort") String idShort);
 
-    // 특정 해시와 복합 키 조건에 해당하는 파일 메타 정보를 조회 (다운로드 시 사용)
-    FilesMeta selectFileMetaByHashAndKey(@Param("hash") String hash,
-            @Param("aasId") String aasId,
-            @Param("submodelId") String submodelId,
-            @Param("idShort") String idShort);
-
     // 파일 메타 신규 등록 (path는 AASId/SubmodelId/Idshort 형식)
     int insertFileMeta(FilesMeta filesMeta);
 
