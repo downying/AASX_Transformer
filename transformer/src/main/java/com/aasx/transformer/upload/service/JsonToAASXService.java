@@ -1,43 +1,25 @@
-// JsonToAASXService.java
 package com.aasx.transformer.upload.service;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.DeserializationException;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.json.JsonDeserializer;
 import org.eclipse.digitaltwin.aas4j.v3.model.AnnotatedRelationshipElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.Blob;
-import org.eclipse.digitaltwin.aas4j.v3.model.Capability;
 import org.eclipse.digitaltwin.aas4j.v3.model.DataSpecificationContent;
 import org.eclipse.digitaltwin.aas4j.v3.model.DataSpecificationIec61360;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.model.File;
-import org.eclipse.digitaltwin.aas4j.v3.model.MultiLanguageProperty;
-import org.eclipse.digitaltwin.aas4j.v3.model.Operation;
-import org.eclipse.digitaltwin.aas4j.v3.model.Property;
-import org.eclipse.digitaltwin.aas4j.v3.model.Range;
-import org.eclipse.digitaltwin.aas4j.v3.model.ReferenceElement;
-import org.eclipse.digitaltwin.aas4j.v3.model.RelationshipElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultAnnotatedRelationshipElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultBlob;
-import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultCapability;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultFile;
-import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultMultiLanguageProperty;
-import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultOperation;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultProperty;
-import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultRange;
-import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultReferenceElement;
-import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultRelationshipElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultSubmodelElementCollection;
+import org.eclipse.digitaltwin.aas4j.v3.model.Property;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,108 +36,66 @@ public class JsonToAASXService {
     private String tempPath;
 
     /**
-     * 멀티 JSON 파일 업로드 및 파싱
+     * 여러 JSON 파일 업로드 및 Environment 변환
      */
-    public List<Environment> uploadJsonFiles(MultipartFile[] jsonFiles) {
+     public List<Environment> uploadJsonFiles(MultipartFile[] jsonFiles) {
         List<Environment> results = new ArrayList<>();
-        for (MultipartFile jsonFile : jsonFiles) {
-            // 1) 파일 저장
-            String original = saveJson(jsonFile);
-
-            // 2) 저장된 경로로부터 다시 읽어와 파싱
-            Path dest = Paths.get(tempPath).resolve(original);
-            results.add(parseEnvironment(dest));
+        for (MultipartFile file : jsonFiles) {
+            try {
+                Path tmp = Files.createTempFile(Path.of(System.getProperty("java.io.tmpdir")), "aasx-", ".json");
+                Files.copy(file.getInputStream(), tmp, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                results.add(parseEnvironment(tmp));
+            } catch (Exception ex) {
+                log.error("JSON 파일 처리 오류 ({}): {}", file.getOriginalFilename(), ex.getMessage());
+            }
         }
         return results;
     }
 
-    /** 단일 JSON 파일 저장 (확장자 검사 및 덮어쓰기) */
-    private String saveJson(MultipartFile jsonFile) {
-        String original = Paths.get(jsonFile.getOriginalFilename())
-                .getFileName().toString();
-        if (!original.toLowerCase().endsWith(".json")) {
-            original += ".json";
-        }
-        Path uploadDir = Paths.get(tempPath);
-        Path dest = uploadDir.resolve(original);
-
-        try {
-            if (Files.notExists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-                log.info("디렉토리 생성: {}", uploadDir);
-            }
-            try (InputStream in = jsonFile.getInputStream()) {
-                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
-            }
-            log.info("JSON 파일 저장 완료: {}", dest);
-            return original;
-
-        } catch (IOException e) {
-            log.error("파일 저장/읽기 오류", e);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "JSON 저장 실패: " + e.getMessage(), e);
-        }
-    }
-
-    /** 저장된 JSON 파일을 AAS4J Environment 로 변환 */
+    /**
+     * 실제 JSON → Environment 역직렬라이즈
+     * useImplementation 으로 인터페이스별 구현체를 지정
+     */
     private Environment parseEnvironment(Path jsonPath) {
         try {
-            byte[] data = Files.readAllBytes(jsonPath);
+            String raw = Files.readString(jsonPath);
 
-            // 1) JsonDeserializer 생성
+            // ─── 여기에 로그를 추가 ───
+            String snippet = raw.length() > 500
+                ? raw.substring(0, 500) + "…(생략)"
+                : raw;
+            log.info("▶ parseEnvironment() — raw snippet:\n{}", snippet);
+            log.info("   Contains modelType? {}", raw.contains("\"modelType\""));
+
             JsonDeserializer deserializer = new JsonDeserializer();
 
-            // 2) DataSpecification 매핑
-            deserializer.useImplementation(
-                    DataSpecificationContent.class,
-                    DataSpecificationIec61360.class);
+            JsonDeserializer des = new JsonDeserializer();
+            des.useImplementation(DataSpecificationContent.class, DataSpecificationIec61360.class);
+            des.useImplementation(SubmodelElementCollection.class, DefaultSubmodelElementCollection.class);
+            des.useImplementation(AnnotatedRelationshipElement.class, DefaultAnnotatedRelationshipElement.class);
+            des.useImplementation(Blob.class, DefaultBlob.class);
+            des.useImplementation(File.class, DefaultFile.class);
+            des.useImplementation(Property.class, DefaultProperty.class);
 
-            // 3) SubmodelElementCollection 매핑
-            deserializer.useImplementation(
-                    SubmodelElementCollection.class,
-                    DefaultSubmodelElementCollection.class);
+            Environment env = des.read(raw, Environment.class);
+            log.info("JSON 파싱 성공: AAS={} / Submodels={}",
+                     env.getAssetAdministrationShells().size(),
+                     env.getSubmodels().size());
+            return env;
 
-            // 4) Blob / File 매핑
-            deserializer.useImplementation(Blob.class, DefaultBlob.class);
-            deserializer.useImplementation(File.class, DefaultFile.class);
-
-            // 5) 기본 DataElement 매핑
-            deserializer.useImplementation(Property.class, DefaultProperty.class);
-            deserializer.useImplementation(MultiLanguageProperty.class, DefaultMultiLanguageProperty.class);
-            deserializer.useImplementation(Range.class, DefaultRange.class);
-
-            // 6) Relationships 매핑
-            deserializer.useImplementation(RelationshipElement.class, DefaultRelationshipElement.class);
-            deserializer.useImplementation(AnnotatedRelationshipElement.class,
-                    DefaultAnnotatedRelationshipElement.class);
-            deserializer.useImplementation(ReferenceElement.class, DefaultReferenceElement.class);
-
-            // 7) Operation / Capability 매핑
-            deserializer.useImplementation(Operation.class, DefaultOperation.class);
-            deserializer.useImplementation(Capability.class, DefaultCapability.class);
-
-            // 8) 스트림으로부터 파싱
-            try (InputStream in = new ByteArrayInputStream(data)) {
-                Environment env = deserializer.read(in, Environment.class);
-                log.info("[AAS4J] JSON 파싱 성공: AAS={} Submodels={} ConceptDescriptions={}",
-                        env.getAssetAdministrationShells().size(),
-                        env.getSubmodels().size(),
-                        env.getConceptDescriptions().size());
-                return env;
-            }
-
-        } catch (DeserializationException dex) {
-            log.error("[AAS4J] 파싱 중 예외: {}", dex.getCause().getMessage(), dex);
+        } catch (IOException ioe) {
+            log.error("JSON 파일 읽기 실패", ioe);
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "JSON 파싱 실패: " + dex.getCause().getMessage(), dex);
-
+                HttpStatus.BAD_REQUEST,
+                "JSON 파일 읽기 실패: " + ioe.getMessage(), ioe
+            );
         } catch (Exception e) {
-            log.error("AAS4J JSON 파싱 실패: {}", e.getMessage(), e);
+            log.error("JSON 파싱 실패", e);
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "JSON 파싱 실패: " + e.getMessage(), e);
+                HttpStatus.BAD_REQUEST,
+                "JSON 파싱 실패: " + e.getMessage(), e
+            );
         }
     }
+
 }

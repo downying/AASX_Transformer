@@ -10,10 +10,15 @@ import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.aasx.transformer.deserializer.AASXFileDeserializer;
 import com.aasx.transformer.upload.dto.FilesMeta;
 import com.aasx.transformer.upload.mapper.UploadMapper;
 import com.aasx.transformer.upload.service.FileUploadService;
@@ -23,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,10 +43,12 @@ public class FileDownloadService {
     @Autowired
     private FileUploadService fileUploadService;
 
+    @Autowired
+    private AASXFileDeserializer aasxFileDeserializer;
+
     @Value("${upload.path}")
     private String uploadPath;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * ✅ 특정 패키지 파일 이름에 해당하는 Environment의 첨부파일 메타 정보를 조회
@@ -222,25 +230,32 @@ public class FileDownloadService {
         }
     }
 
-    // ✅ 업데이트된 Environment 객체를 JSON으로 변환 후 임시 파일로 반환
-    public Resource downloadEnvironmentAsJson(Environment environment, String originalFileName) {
+    /**
+     * ✅ 업데이트된 Environment 객체를 JSON으로 직렬화해서 Resource로 반환
+     */
+    public ResponseEntity<Resource> downloadEnvironmentAsJson(Environment environment, String originalFileName) {
         log.info("downloadEnvironmentAsJson 호출 - originalFileName: {}", originalFileName);
         try {
-            // 원본 파일 이름에서 확장자(.aasx 등)를 제거 gn ".json" 확장자 추가
-            String baseName = originalFileName;
-            int dotIndex = originalFileName.lastIndexOf(".");
-            if (dotIndex > 0) {
-                baseName = originalFileName.substring(0, dotIndex);
-            }
-            String tempFileName = baseName + ".json";
+            // 1) AAS4J JsonSerializer 로 modelType 포함한 JSON 얻기
+            String json = aasxFileDeserializer.serializeEnvironmentToJson(environment);
 
-            // 업로드 경로에 JSON 파일 생성
-            File tempFile = new File(uploadPath, tempFileName);
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(tempFile, environment);
-            log.info("Environment JSON 임시 파일 생성: {}", tempFile.getAbsolutePath());
+            // 2) JSON 문자열을 바이트 배열로 변환해서 Resource로 래핑
+            byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+            ByteArrayResource resource = new ByteArrayResource(bytes);
 
-            // FileSystemResource로 반환
-            return new FileSystemResource(tempFile);
+            // 파일명 설정 (원본 .aasx 대신 .json)
+            String baseName = originalFileName.contains(".")
+                ? originalFileName.substring(0, originalFileName.lastIndexOf('.'))
+                : originalFileName;
+            String jsonFileName = baseName + ".json";
+
+            // 3) ResponseEntity로 Content‐Disposition, Content‐Type 헤더 주기
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + jsonFileName + "\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .contentLength(bytes.length)
+                .body(resource);
+
         } catch (Exception e) {
             log.error("Environment JSON 파일 생성 실패", e);
             throw new RuntimeException("Environment JSON 파일 생성 실패", e);

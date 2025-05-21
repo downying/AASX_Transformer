@@ -1,82 +1,79 @@
 import axios from "axios";
 import { Environment } from "./Environment";
 
-
-
-// ✅ 파일 업로드
-export const uploadFile = async (formData: FormData) => {
+/**
+ * .aasx 파일 업로드 → URL이 반영된 Environment 를 JSON 문자열로 받고
+ * JSON.parse 해서 Environment 객체 배열로 반환
+ */
+export const uploadFile = async (formData: FormData): Promise<Environment[]> => {
   try {
-    // 환경 변수 출력 (디버깅용)
-    console.log("API URL:", process.env.NEXT_PUBLIC_API_URL); // API 요청 URL
+    console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
 
-    // 파일 업로드 요청 - 업로드할 데이터
-    const response = await axios.post(
+    // 서버가 string[] 형태의 JSON 문자열을 반환합니다
+    const response = await axios.post<string[]>(
       `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/aasx`,
       formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" }, // 헤더 설정
-      }
+      { headers: { "Content-Type": "multipart/form-data" } }
     );
 
-    // 서버 응답
-    const parsedData = response.data.map((item: string) => {
+    // 각 문자열을 JSON.parse 해서 Environment 로 변환
+    const envs: Environment[] = response.data.map((jsonStr) => {
       try {
-        // return JSON.parse(item);
-        return item;
-      } catch (error) {
-        console.error("JSON 파싱 오류:", error);
-        return null;
+        return JSON.parse(jsonStr) as Environment;
+      } catch (e) {
+        console.error("Environment 파싱 실패:", e, jsonStr);
+        throw e;
       }
     });
 
-    console.log("API - 파일 업로드 서버 응답:", parsedData);
-    return parsedData;
+    console.log("API - parsed Environments:", envs);
+    return envs;
+
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      // 서버 응답 오류
       console.error("서버 오류:", error.response.data);
       throw new Error(`파일 업로드 실패: ${error.response.data}`);
     } else {
-      // 네트워크 오류 또는 요청 오류
-      console.error("요청 오류:", error);
+      console.error("네트워크 오류:", error);
       throw new Error("파일 업로드 실패: 네트워크 오류");
     }
   }
 };
 
-// ✅ 파일 목록 - 파일 이름
-export const listUploadedFiles = async () => {
+/**
+ * 업로드된 파일 이름 목록 조회
+ */
+export const listUploadedFiles = async (): Promise<string[]> => {
   try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/transformer/uploadedFileNames`);
-    console.log("API - 파일 이름 서버 응답:", response.data);
+    const response = await axios.get<string[]>(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/uploadedFileNames`
+    );
+    console.log("API - 파일 이름 목록:", response.data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      // 서버 응답 오류
       console.error("서버 오류:", error.response.data);
-      throw new Error(`업로드된 파일을 가져오는 데 실패했습니다: ${error.response.data}`);
+      throw new Error(`파일 목록 조회 실패: ${error.response.data}`);
     } else {
-      // 네트워크 오류 또는 요청 오류
-      console.error("요청 오류:", error);
-      throw new Error("업로드된 파일을 가져오는 데 실패했습니다: 네트워크 오류");
-    }
+      console.error("네트워크 오류:", error);
+      throw new Error("파일 목록 조회 실패: 네트워크 오류");
+    };
   }
-};
-
+}
 
 // ✅ JSON 파일 업로드
 export const uploadJsonFiles = async (formData: FormData): Promise<Environment[]> => {
-  try {
-    const response = await axios.post<Environment[]>(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      throw new Error(error.response.data.message || JSON.stringify(error.response.data));
-    }
-    throw new Error("JSON 업로드 실패: 네트워크 오류");
+try {
+  const response = await axios.post<Environment[]>(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return response.data;
+} catch (error) {
+  if (axios.isAxiosError(error) && error.response) {
+    throw new Error(error.response.data.message || JSON.stringify(error.response.data));
   }
-};
+  throw new Error("JSON 업로드 실패: 네트워크 오류");
+}
+}

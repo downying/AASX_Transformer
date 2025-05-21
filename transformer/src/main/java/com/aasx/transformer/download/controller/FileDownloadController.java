@@ -48,19 +48,15 @@ public class FileDownloadController {
      * 예시 URL: /api/transformer/download/environment/{fileName}
      */
     @GetMapping("/download/environment/{fileName}")
-    public ResponseEntity<Resource> downloadEnvironment(@PathVariable("fileName") String fileName) {
+    public ResponseEntity<Resource> downloadEnvironment(@PathVariable String fileName) {
         log.info("다운로드 요청된 파일 이름: {}", fileName);
         Map<String, Environment> updatedEnvironmentMap = fileUploadService.computeSHA256HashesForInMemoryFiles();
         if (!updatedEnvironmentMap.containsKey(fileName)) {
             log.warn("요청된 파일 이름 '{}'에 해당하는 Environment 정보가 존재하지 않습니다.", fileName);
             return ResponseEntity.notFound().build();
         }
-        Environment updatedEnvironment = updatedEnvironmentMap.get(fileName);
-        Resource resource = fileDownloadService.downloadEnvironmentAsJson(updatedEnvironment, fileName);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(resource);
+        Environment env = updatedEnvironmentMap.get(fileName);
+        return fileDownloadService.downloadEnvironmentAsJson(env, fileName);
     }
 
     /**
