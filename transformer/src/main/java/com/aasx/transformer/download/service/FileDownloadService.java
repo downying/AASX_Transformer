@@ -233,7 +233,7 @@ public class FileDownloadService {
     /**
      * ✅ 업데이트된 Environment 객체를 JSON으로 직렬화해서 Resource로 반환
      */
-    public ResponseEntity<Resource> downloadEnvironmentAsJson(Environment environment, String originalFileName) {
+    public Resource downloadEnvironmentAsJson(Environment environment, String originalFileName) {
         log.info("downloadEnvironmentAsJson 호출 - originalFileName: {}", originalFileName);
         try {
             // 1) AAS4J JsonSerializer 로 modelType 포함한 JSON 얻기
@@ -241,20 +241,8 @@ public class FileDownloadService {
 
             // 2) JSON 문자열을 바이트 배열로 변환해서 Resource로 래핑
             byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-            ByteArrayResource resource = new ByteArrayResource(bytes);
 
-            // 파일명 설정 (원본 .aasx 대신 .json)
-            String baseName = originalFileName.contains(".")
-                ? originalFileName.substring(0, originalFileName.lastIndexOf('.'))
-                : originalFileName;
-            String jsonFileName = baseName + ".json";
-
-            // 3) ResponseEntity로 Content‐Disposition, Content‐Type 헤더 주기
-            return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + jsonFileName + "\"")
-                .contentType(MediaType.APPLICATION_JSON)
-                .contentLength(bytes.length)
-                .body(resource);
+            return new ByteArrayResource(bytes);
 
         } catch (Exception e) {
             log.error("Environment JSON 파일 생성 실패", e);

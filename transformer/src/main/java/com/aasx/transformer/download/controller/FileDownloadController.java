@@ -47,16 +47,29 @@ public class FileDownloadController {
      * ✅ 특정 파일의 업데이트된 Environment JSON 다운로드
      * 예시 URL: /api/transformer/download/environment/{fileName}
      */
-    @GetMapping("/download/environment/{fileName}")
+    @GetMapping("/download/environment/{fileName:.+}")
     public ResponseEntity<Resource> downloadEnvironment(@PathVariable String fileName) {
         log.info("다운로드 요청된 파일 이름: {}", fileName);
+
+        // computeSHA256HashesForInMemoryFiles() 로 해시 URL이 바인딩된 Environment map 을 구하고
         Map<String, Environment> updatedEnvironmentMap = fileUploadService.computeSHA256HashesForInMemoryFiles();
+
+        // 해당 파일명이 없으면 404
         if (!updatedEnvironmentMap.containsKey(fileName)) {
             log.warn("요청된 파일 이름 '{}'에 해당하는 Environment 정보가 존재하지 않습니다.", fileName);
             return ResponseEntity.notFound().build();
         }
+
+        // Environment 꺼내서 JSON Resource 로 직렬화
         Environment env = updatedEnvironmentMap.get(fileName);
-        return fileDownloadService.downloadEnvironmentAsJson(env, fileName);
+        Resource jsonResource = fileDownloadService.downloadEnvironmentAsJson(env, fileName);
+
+        // Content-Disposition 헤더 등 붙여서 ResponseEntity로 반환
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fileName + ".json\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(jsonResource);
     }
 
     /**
@@ -65,7 +78,7 @@ public class FileDownloadController {
      * @param hash 다운로드할 파일의 SHA-256 해시값 (저장된 파일명)
      * @return 파일을 포함한 ResponseEntity
      * 
-     * 브라우저에서 바로 파일을 열거나 저장
+     *         브라우저에서 바로 파일을 열거나 저장
      */
     @GetMapping("/download/{hashAndExt:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String hashAndExt) {
