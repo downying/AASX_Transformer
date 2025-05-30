@@ -3,18 +3,29 @@ package com.aasx.transformer.download.controller;
 import com.aasx.transformer.download.service.FileDownloadService;
 import com.aasx.transformer.upload.dto.FilesMeta;
 import com.aasx.transformer.upload.service.FileUploadService;
+import com.aasx.transformer.upload.service.JsonToAASXService;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.AASXSerializer;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.InMemoryFile;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.xml.XmlSerializer;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -23,8 +34,14 @@ import java.util.Map;
 @RequestMapping("/api/transformer")
 public class FileDownloadController {
 
+    @Value("${upload.temp-path}")
+    private String tempPath;
+
     @Autowired
     private FileUploadService fileUploadService;
+
+    @Autowired
+    private JsonToAASXService jsonToAasxService;
 
     @Autowired
     private FileDownloadService fileDownloadService;
@@ -64,20 +81,25 @@ public class FileDownloadController {
         Environment env = updatedEnvironmentMap.get(fileName);
         Resource jsonResource = fileDownloadService.downloadEnvironmentAsJson(env, fileName);
 
+        String baseName = fileName.toLowerCase().endsWith(".aasx")
+                ? fileName.substring(0, fileName.length() - 5)
+                : fileName;
+        String downloadName = baseName + ".json";
+
         // Content-Disposition 헤더 등 붙여서 ResponseEntity로 반환
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileName + ".json\"")
+                        "attachment; filename=\"" + downloadName + "\"")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(jsonResource);
     }
 
     /**
      * ✅ 첨부파일 다운로드
-     * 
+     *
      * @param hash 다운로드할 파일의 SHA-256 해시값 (저장된 파일명)
      * @return 파일을 포함한 ResponseEntity
-     * 
+     *
      *         브라우저에서 바로 파일을 열거나 저장
      */
     @GetMapping("/download/{hashAndExt:.+}")
@@ -128,7 +150,7 @@ public class FileDownloadController {
 
     /**
      * ✅ 첨부파일 메타 삭제
-     * 
+     *
      * @param compositeKey "aasId::submodelId::idShort" 형태의 복합키
      */
     @DeleteMapping("/delete/file")
@@ -136,6 +158,54 @@ public class FileDownloadController {
         log.info("삭제할 compositeKey = {}", compositeKey);
         fileUploadService.deleteFileMeta(compositeKey);
         return ResponseEntity.noContent().build();
+    }
+
+    // ======================= AASX Download =======================
+
+    /**
+     * ✅ URL 포함 AASX 패키지 다운로드 (tempPath에서 바로 읽음)
+     */
+    @GetMapping("/json/download/url/{fileName:.+}")
+    public ResponseEntity<Resource> downloadWithUrlAasx(@PathVariable String fileName) throws IOException {
+        log.info("URL AASX 다운로드 요청, fileName: {}", fileName);
+        // fileName은 원래 JSON 파일명, ".json" 확장자 포함
+        String base = fileName.toLowerCase().endsWith(".json")
+                ? fileName.substring(0, fileName.length() - 5)
+                : fileName;
+        String aasxName = base + ".aasx";
+
+        Path filePath = Path.of(tempPath, aasxName);
+        if (!Files.exists(filePath)) {
+            log.warn("Temp에 AASX 파일이 없습니다: {}", filePath);
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = new FileSystemResource(filePath.toFile());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + aasxName + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(Files.size(filePath))
+                .body(resource);
+    }
+
+    @GetMapping("/json/download/revert/{fileName:.+}")
+    public ResponseEntity<Resource> downloadRevertedAasx(@PathVariable String fileName) throws IOException {
+        // tempPath 에 저장된 `${baseName}.aasx` 파일을 읽어서 반환
+        String base = fileName.toLowerCase().endsWith(".json")
+                ? fileName.substring(0, fileName.length() - 5)
+                : fileName;
+        String aasxName = base + ".aasx";
+        Path filePath = Path.of(tempPath, aasxName);
+        if (!Files.exists(filePath)) {
+            log.warn("Temp에 AASX 파일이 없습니다: {}", filePath);
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(filePath.toFile());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + aasxName + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(Files.size(filePath))
+                .body(resource);
     }
 
 }

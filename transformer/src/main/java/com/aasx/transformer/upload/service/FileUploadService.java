@@ -257,9 +257,14 @@ public class FileUploadService {
                         // Content-Type: default thumbnail 여부까지 포함한 단일 메서드 호출
                         newMeta.setContentType(retrieveContentType(environment, originalPath));
 
+                        // ★ 파일 메타에 'path' 컬럼으로 AASX 내부 상대경로(value) 저장
+                        newMeta.setPath(originalPath);
+                        log.info("FilesMeta.path 으로 저장될 상대경로: {}", originalPath);
+
                         newMeta.setHash(hash);
                         uploadMapper.insertFileMeta(newMeta);
                         uploadMapper.updateFileRefCount(hash);
+
                         meta = uploadMapper.selectFileMetaByPath(aasId, submodelId, idShort);
                     }
 
@@ -671,26 +676,28 @@ public class FileUploadService {
         } catch (Exception e) {
             log.warn("defaultThumbnail 처리 중 예외: {}", e.toString());
         }
-    
+
         // 2) defaultThumbnail 아닌 경우 AAS 내 File 요소 순회
         final String[] result = new String[] { "application/octet-stream" };
         new AssetAdministrationShellElementWalkerVisitor() {
             @Override
             public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File file) {
-                if (file == null) return;
+                if (file == null)
+                    return;
                 String val = file.getValue();
                 if (val != null
-                 && normalizePath(val).equals(normalizePath(originalPath))
-                 && file.getContentType() != null
-                 && !file.getContentType().isBlank()) {
+                        && normalizePath(val).equals(normalizePath(originalPath))
+                        && file.getContentType() != null
+                        && !file.getContentType().isBlank()) {
                     result[0] = file.getContentType();
                     log.info("탐색된 File 요소 contentType: {}", result[0]);
                 }
             }
         }.visit(env);
-    
+
         return result[0];
     }
+
     // ✅ ★ helper 6) Environment 내 File 객체의 value 값을 원본 경로와 일치하는 경우에만 해시 기반 URL로 변경
     public void updateEnvironmentFilePathsToURL(Environment environment, String originalPath, String hashBaseUrl) {
         AssetAdministrationShellElementWalkerVisitor visitor = new AssetAdministrationShellElementWalkerVisitor() {

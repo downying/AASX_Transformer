@@ -14,5 +14,6 @@ public class FilesMeta {
     private String name;
     private String extension;
     private String contentType;
+    private String path;
     private String hash;
 }

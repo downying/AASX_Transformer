@@ -57,7 +57,7 @@
     <!-- 특정 path(복합키: aas_id, submodel_id, idShort)로 파일 메타 조회 -->
     <select id="selectFileMetaByPath" parameterType="map" resultType="FilesMeta">
       <![CDATA[
-      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, path, hash
       FROM files_meta
       WHERE aas_id = #{aasId} AND submodel_id = #{submodelId} AND idShort = #{idShort}
       ]]>
@@ -66,8 +66,8 @@
     <!-- 파일 메타 신규 등록 -->
     <insert id="insertFileMeta" parameterType="FilesMeta">
       <![CDATA[
-      INSERT INTO files_meta (aas_id, submodel_id, idShort, name, extension, content_type, hash)
-      VALUES (#{aasId}, #{submodelId}, #{idShort}, #{name}, #{extension}, #{contentType}, #{hash})
+      INSERT INTO files_meta (aas_id, submodel_id, idShort, name, extension, content_type, path, hash)
+      VALUES (#{aasId}, #{submodelId}, #{idShort}, #{name}, #{extension}, #{contentType}, #{path}, #{hash})
       ON CONFLICT(aas_id, submodel_id, idShort) DO NOTHING
       ]]>
     </insert>
@@ -83,7 +83,7 @@
     <!-- 단일 hash 기반 파일 메타 조회 -->
     <select id="selectOneFileMetaByHash" parameterType="String" resultType="FilesMeta">
       <![CDATA[
-      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, path, hash
       FROM files_meta
       WHERE hash = #{hash}
       LIMIT 1
@@ -117,7 +117,7 @@
     <!-- ✅ 모든 파일 메타 정보 조회 -->
     <select id="selectAllFileMetas" resultType="FilesMeta">
     <![CDATA[
-      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, hash
+      SELECT aas_id AS aasId, submodel_id AS submodelId, idShort, name, extension, content_type AS contentType, path, hash
       FROM files_meta
       LIMIT #{limit} OFFSET #{offset}
     ]]>

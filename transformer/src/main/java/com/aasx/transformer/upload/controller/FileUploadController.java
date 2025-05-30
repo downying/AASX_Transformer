@@ -30,9 +30,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.AASXDeserializer;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.AASXSerializer;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.aasx.InMemoryFile;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.DeserializationException;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.SerializationException;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.json.JsonSerializer;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.xml.XmlSerializer;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 
 @Slf4j
@@ -65,6 +68,7 @@ public class FileUploadController {
                 .map(env -> aasxFileDeserializer.serializeEnvironmentToJson(env))
                 .collect(Collectors.toList());
 
+        log.info("uploadFile → 변환된 JSON 목록: {}", jsonList);
         return ResponseEntity.ok(jsonList);
     }
 
@@ -76,11 +80,24 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadedFileNames);
     }
 
-    // ✅ JSON 파일을 받아서 AASX 패키지로 변환
+    // ✅ 업로드된 JSON 파일 이름 조회
+    @GetMapping("/uploadedJsonFileNames")
+    public ResponseEntity<List<String>> listUploadedJsonFiles() {
+        List<String> jsonFileNames = jsonToAasxService.getUploadedJsonFileNames();
+        log.info("컨트롤러 - 업로드된 JSON 파일 이름 조회: {}", jsonFileNames);
+        return ResponseEntity.ok(jsonFileNames);
+    }
+
+    /**
+     * ✅ JSON → AASX 패키지 생성 (URL-only, embed-files 두 가지 variant)
+     *    업로드된 JSON을 바탕으로 두 가지 AASX를 모두 생성하고
+     *    생성된 파일명 리스트를 그대로 반환합니다.
+     */
     @PostMapping("/json")
-    public ResponseEntity<List<Environment>> uploadJson(
-            @RequestParam("files") MultipartFile[] jsonFiles) {
-        List<Environment> envs = jsonToAasxService.uploadJsonFiles(jsonFiles);
-        return ResponseEntity.ok(envs);
+    public ResponseEntity<List<String>> uploadJson(@RequestPart("files") MultipartFile[] files) {
+        log.info("JSON → AASX 패키지 생성 요청, 파일 수: {}", files.length);
+        List<String> names = jsonToAasxService.generateAasxVariants(files);
+        log.info("uploadJson → 생성된 AASX 파일: {}", names);
+        return ResponseEntity.ok(names);
     }
 }

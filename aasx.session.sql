@@ -14,6 +14,7 @@ CREATE TABLE files_meta
   name         TEXT    NOT NULL,
   extension    TEXT    NOT NULL,
   content_type TEXT    NOT NULL,
+  path         TEXT    NOT NULL,
   hash         TEXT    NOT NULL,
   PRIMARY KEY (aas_id, submodel_id, idShort),
   FOREIGN KEY (hash) REFERENCES files(hash)

@@ -163,3 +163,61 @@ export async function fetchUploadedFiles(offset: number, limit: number): Promise
   }
 }
 
+// URL 포함 AASX 패키지 다운로드
+export async function downloadWithUrlAasx(fileName: string) {
+  try {
+    // 1) tempPath 에 생성된 .aasx 를 GET 으로 읽어오기
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json/download/url/${encodeURIComponent(fileName)}`,
+      { responseType: "blob" }
+    );
+
+    // 2) Content-Disposition 헤더에서 실제 다운로드 파일명 추출
+    const disposition = response.headers["content-disposition"];
+    let aasxName = fileName.replace(/\.json$/i, "") + ".aasx";
+    if (disposition) {
+      const m = disposition.match(/filename="(.+?)"/);
+      if (m) aasxName = m[1];
+    }
+
+    // 3) Blob 으로 다운로드 트리거
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = aasxName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("URL AASX 다운로드 실패:", e);
+    throw new Error("URL AASX 다운로드에 실패했습니다.");
+  }
+}
+
+// 상대경로 복원 AASX 패키지 다운로드
+export async function downloadRevertedAasx(fileName: string) {
+  try {
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json/download/revert/${encodeURIComponent(fileName)}`,
+      { responseType: "blob" }
+    );
+    const disposition = response.headers["content-disposition"];
+    let aasxName = fileName.replace(/\.json$/i, "") + ".aasx";
+    if (disposition) {
+      const m = disposition.match(/filename="(.+?)"/);
+      if (m) aasxName = m[1];
+    }
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = aasxName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("복원 AASX 다운로드 실패:", e);
+    throw new Error("복원 AASX 다운로드에 실패했습니다.");
+  }
+}
