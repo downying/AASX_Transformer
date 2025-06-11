@@ -29,10 +29,22 @@ import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.DeserializationException
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.internal.visitor.AssetAdministrationShellElementWalkerVisitor;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.json.JsonDeserializer;
 import org.eclipse.digitaltwin.aas4j.v3.dataformat.xml.XmlSerializer;
+import org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.model.File;
+import org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes;
+import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.Resource;
+import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
+
+import org.eclipse.digitaltwin.aas4j.v3.model.Key;
+import org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes;
+import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
+import org.eclipse.digitaltwin.aas4j.v3.dataformat.core.internal.visitor.AssetAdministrationShellElementWalkerVisitor;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -59,8 +71,8 @@ public class JsonToAASXService {
     @Autowired
     private FileUploadService fileUploadService;
 
+    // JSON → Environment 파싱용 Deserializer
     private final JsonDeserializer deserializer = new JsonDeserializer();
-
     // 업로드된 JSON 파일 이름 목록
     private final List<String> uploadedFileNames = new CopyOnWriteArrayList<>();
     // JSON→AASX 변환 후 생성된 AASX 파일 이름 목록
@@ -68,42 +80,50 @@ public class JsonToAASXService {
     // 업로드된 JSON 파일로부터 변환된 Environment 목록
     private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>();
 
-    // JSON 파일명 → (URL → Deque<FilesMeta>) 맵
-    // 1. 하나의 URL에 매핑된 여러 FilesMeta를
-    // 2. 저장한 순서대로(addLast)
-    // 3. 치환 시마다 하나씩(pollFirst) 꺼내 처리
+    /**
+     * JSON 파일명 → (URL → Deque<FilesMeta>) 매핑
+     * - 하나의 URL에 대응하는 여러 FilesMeta 정보를 순서대로 저장
+     * - AASX 생성 시 URL을 상대경로로 치환할 때 사용
+     */
     private final Map<String, Map<String, Deque<FilesMeta>>> jsonMetaMap = new ConcurrentHashMap<>();;
 
     /**
-     * 한 번의 호출로 URL-only / embed-files 두 variant 생성
-     * 반환된 리스트에는 "-url.aasx" 와 "-embed.aasx" 가 섞여 있습니다.
+     * 한 번의 호출로 URL-only / Revert(embed) 두 Variant를 모두 생성하고, 생성된 AASX 파일명 전체를 리턴
+     *
+     * @param jsonFiles MultipartFile[] 형태로 업로드된 JSON 파일들
+     * @return 생성된 AASX 파일명 리스트 (예: ["example-url.aasx", "example-revert.aasx"])
      */
     public List<String> generateAasxVariants(MultipartFile[] jsonFiles) {
-        // URL-only
+        // 1) URL-only 형식 생성
         uploadJsonFiles(jsonFiles, false);
         List<String> urls = new ArrayList<>(uploadedAasxFileNames);
 
-        // embed-files
+        // 2) Revert 형식 생성
         uploadJsonFiles(jsonFiles, true);
-        List<String> embeds = new ArrayList<>(uploadedAasxFileNames);
+        List<String> revert = new ArrayList<>(uploadedAasxFileNames);
 
+        // 두 리스트를 합쳐서 반환
         List<String> all = new ArrayList<>();
         all.addAll(urls);
-        all.addAll(embeds);
+        all.addAll(revert);
         log.info("generateAasxVariants → 생성된 AASX 목록: {}", all);
         return all;
     }
 
     /**
-     * JSON → Environment → AASX 패키지 생성
+     * JSON → Environment → AASX 패키지 생성 메인 로직
+     * - revertPaths == false → URL-only AASX 생성 (외부 URL 유지)
+     * - revertPaths == true → URL을 상대경로로 치환 후 AASX 생성
      *
      * @param jsonFiles   업로드된 JSON 파일들
-     * @param revertPaths true: URL→상대경로(embed), false: URL-only
+     * @param revertPaths true: URL을 상대경로로 치환하여 AASX 생성, false: URL-only
+     * @return 변환된 Environment 객체 리스트
      */
     public List<Environment> uploadJsonFiles(MultipartFile[] jsonFiles, boolean revertPaths) {
         if (jsonFiles == null || jsonFiles.length == 0) {
             throw new IllegalArgumentException("최소 하나의 JSON 파일을 업로드해야 합니다.");
         }
+        // 초기화: 이전 호출 시 저장된 상태를 클리어
         uploadedFileNames.clear();
         uploadedEnvironments.clear();
         uploadedAasxFileNames.clear();
@@ -112,17 +132,21 @@ public class JsonToAASXService {
             String originalName = file.getOriginalFilename();
             log.info("uploadJsonFiles: 처리 중인 JSON 파일 = {}", originalName);
 
-            // 1) JSON → Environment
+            // 1️⃣ JSON → Environment
             Environment env = parseEnvironment(file);
 
-            // ★ JSON 파일명 → DB 메타정보 미리 조회해서 jsonMetaMap에 저장
+            // 2️⃣ 원래 JSON에 semanticId 보완
+            // fillOnlyExistingSemanticIds(env);
+
+            // 3️⃣ JSON 파일명 → DB 메타정보 미리 조회해서 jsonMetaMap에 저장
             saveJsonMetaInfos(originalName, env);
 
-            // 확인용 로그
+            // 초기 파일/리소스 참조 로그 출력 (디버깅 용도)
             AtomicInteger fileRef = new AtomicInteger();
             AtomicInteger resRef = new AtomicInteger();
 
             log.info("[Init] 모델 내 File/Resource 참조 위치 출력 시작");
+
             new AssetAdministrationShellElementWalkerVisitor() {
                 @Override
                 public void visit(File f) {
@@ -145,25 +169,134 @@ public class JsonToAASXService {
             log.info("[Init] 총 File refs: {}, 총 Resource refs: {}", fileRef.get(), resRef.get());
             log.info("[Init] 모델 내 File/Resource 참조 위치 출력 종료");
 
+            // 저장된 JSON 파일명, Environment 리스트에 추가
             uploadedFileNames.add(originalName);
             uploadedEnvironments.add(env);
 
-            // 2) semanticId 제거
-            clearSemanticIds(env);
-
-            // 3) AASX Serializer로 패키징·저장
+            // 4️⃣ 실제로 AASX 파일을 생성·저장
             String baseName = deriveBaseName(originalName);
             writeAasx(env, baseName, revertPaths, originalName);
         }
         return new ArrayList<>(uploadedEnvironments);
     }
 
-    /** 기본 모드 (revertPaths=false) */
-    public List<Environment> uploadJsonFiles(MultipartFile[] jsonFiles) {
-        return uploadJsonFiles(jsonFiles, false);
+    /**
+     * 1️⃣ JSON 바이너리를 Environment 객체로 파싱
+     * 
+     * @param jsonFile MultipartFile 형태의 JSON 파일
+     * @return 파싱된 Environment 객체
+     * @throws RuntimeException 파싱 실패 시
+     */
+    private Environment parseEnvironment(MultipartFile jsonFile) {
+        try {
+            byte[] raw = jsonFile.getBytes();
+            Environment env = deserializer.read(new ByteArrayInputStream(raw), Environment.class);
+
+            // JSON 내 conceptDescriptions 가 제대로 로드되었는지 로그 확인
+            if (env.getConceptDescriptions() != null) {
+                log.info("▶ Loaded ConceptDescriptions: count={}", env.getConceptDescriptions().size());
+            } else {
+                log.warn("▶ No ConceptDescriptions found in JSON");
+            }
+
+            return env;
+        } catch (IOException | DeserializationException e) {
+            log.error("JSON 파싱 오류: {}", e.getMessage());
+            throw new RuntimeException("JSON 파싱 실패: " + e.getMessage(), e);
+        }
     }
 
-    /** ".json" 확장자 제거 헬퍼 */
+    /**
+     * 3️⃣ JSON 이름(jsonName)과 Environment(env)를 받아서
+     * URL → FilesMeta Deque 매핑을 생성하는 메소드
+     */
+    private void saveJsonMetaInfos(String jsonName, Environment env) {
+        // AAS–Submodel–File/Resource 매핑을 저장할 임시 Map
+        Map<String, Deque<FilesMeta>> map = new HashMap<>();
+
+        // (1) 모든 Submodel을 순회
+        for (Submodel sm : env.getSubmodels()) {
+            String submodelId = sm.getId();
+
+            // (2) 해당 Submodel을 포함하는 AAS ID를 찾아서 활용
+            // (예를 들어, AAS 목록 중 이 submodelId를 직접 참조하고 있는 첫 번째 AAS를 반환)
+            String aasId = findAasIdForSubmodel(env, submodelId);
+
+            // (3) AAS 내부의 File/Resource 요소를 순회하며 URL→FilesMeta 매핑
+            new AssetAdministrationShellElementWalkerVisitor() {
+                @Override
+                public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File f) {
+                    String url = f.getValue();
+                    if (url == null || !url.startsWith("http")) {
+                        return;
+                    }
+
+                    // findAasIdForSubmodel으로 찾아낸 aasId 사용
+                    FilesMeta meta = uploadMapper.selectFileMetaByPath(aasId, submodelId, f.getIdShort());
+                    if (meta != null) {
+                        // 같은 URL에 여러 개의 메타가 있을 수 있으므로 Deque에 순서대로 넣는다
+                        map.computeIfAbsent(url, k -> new ArrayDeque<>()).add(meta);
+                    } else {
+                        log.warn("DB에 files_meta 없음(File): aasId={}, submodelId={}, idShort={}",
+                                aasId, submodelId, f.getIdShort());
+                    }
+                }
+
+                @Override
+                public void visit(org.eclipse.digitaltwin.aas4j.v3.model.Resource r) {
+                    if (r == null) {
+                        return;
+                    }
+                    String url = r.getPath();
+                    if (url == null || !url.startsWith("http")) {
+                        return;
+                    }
+
+                    String idShort = ((SubmodelElement) r).getIdShort();
+                    // findAasIdForSubmodel으로 찾아낸 aasId 사용
+                    FilesMeta meta = uploadMapper.selectFileMetaByPath(aasId, submodelId, idShort);
+                    if (meta != null) {
+                        map.computeIfAbsent(url, k -> new ArrayDeque<>()).add(meta);
+                    } else {
+                        log.warn("DB에 files_meta 없음(Resource): aasId={}, submodelId={}, idShort={}",
+                                aasId, submodelId, idShort);
+                    }
+                }
+            }.visit(env);
+        }
+
+        // 완성된 URL→Deque<FilesMeta> 매핑을 jsonMetaMap에 저장
+        jsonMetaMap.put(jsonName, map);
+    }
+
+    /**
+     * 주어진 submodelId를 참조하는 AAS(Asset Administration Shell)의 ID를 반환
+     */
+    private String findAasIdForSubmodel(Environment env, String submodelId) {
+        if (env.getAssetAdministrationShells() != null) {
+            for (var aas : env.getAssetAdministrationShells()) {
+                if (aas.getSubmodels() != null) {
+                    // AAS가 보유한 Reference 키들 중에 submodelId가 있으면 해당 AAS ID를 반환
+                    boolean matches = aas.getSubmodels().stream()
+                            .flatMap(ref -> ref.getKeys().stream())
+                            .anyMatch(k -> KeyTypes.SUBMODEL.equals(k.getType()) && submodelId.equals(k.getValue()));
+                    if (matches) {
+                        return aas.getId();
+                    }
+                }
+            }
+        }
+        // 어느 AAS도 참조하지 않았다면, 리스트의 첫 번째 AAS ID를 반환
+        return env.getAssetAdministrationShells().get(0).getId();
+    }
+
+    /**
+     * 4️⃣ 파일명에서 ".json" 확장자를 제거한 기본 이름을 반환
+     * 예: "example.json" → "example"
+     *
+     * @param originalName JSON 파일의 원래 이름
+     * @return 확장자(".json")가 제거된 파일명. 확장자가 없으면 그대로 반환
+     */
     private String deriveBaseName(String originalName) {
         if (originalName == null)
             return "unknown";
@@ -173,16 +306,28 @@ public class JsonToAASXService {
     }
 
     /**
-     * AASX 쓰기헬퍼
+     * 4️⃣ AASX 패키지 파일을 실제로 생성하고 디스크에 저장하는 헬퍼 메소드
+     *
+     * 1) revertPaths == true: URL을 로컬 상대경로로 치환 (injectInMemoryFiles)
+     * 2) 모델 내 File/Resource 전체 참조 로그 출력 (디버깅 용도)
+     * 3) InMemoryFile 목록 구성 (getInMemoryFiles)
+     * 4) 중복 참조 제거 및 기본 썸네일(thumbnail) 제외
+     * 5) 최종 AASX 바이너리를 ByteArrayOutputStream으로 직렬화
+     * 6) 지정된 tempPath 디렉토리에 ".aasx" 파일로 저장
+     *
+     * @param env          변환할 AASX의 Environment 객체
+     * @param baseName     AASX 파일명(확장자 제외) 기본 이름
+     * @param includeFiles true이면 URL→상대경로 치환 후 InMemoryFile 포함, false이면 URL-only
+     * @param jsonName     원본 JSON 파일명(치환 시 jsonMetaMap 조회용)
      */
     private void writeAasx(Environment env, String baseName, boolean includeFiles, String jsonName) {
         try {
-            // 1) embed 모드: URL 치환 + 중복 참조 제거
+            // 🔴 1) Revert(embed) 모드: URL을 상대경로로 치환
             if (includeFiles) {
                 injectInMemoryFiles(env, jsonName);
-                // removeDuplicateRefs(env);
             }
 
+            // 2) 변환 후 모델 내 File/Resource 전체 참조 로그 출력 (디버깅 용도)
             log.info("--- 모델 내 File/Resource 전체 참조 로그 시작 ---");
             AtomicInteger fileIdx = new AtomicInteger(0), resIdx = new AtomicInteger(0);
             new AssetAdministrationShellElementWalkerVisitor() {
@@ -206,12 +351,16 @@ public class JsonToAASXService {
             }.visit(env);
             log.info("--- 총 File refs: {}, 총 Resource refs: {} ---", fileIdx.get(), resIdx.get());
 
-            // 3) InMemoryFile 준비
+            // 🔵 3) InMemoryFile 목록 준비 (includeFiles==true일 때만 실제 파일 포함)
             List<InMemoryFile> inMemFiles = includeFiles
                     ? getInMemoryFiles(env)
                     : Collections.emptyList();
 
-            // default-thumbnail 경로 가져오기
+            // 4) default-thumbnail 경로가 InMemoryFile 목록에 남아 있으면 제외
+            // AssetInformation.getDefaultThumbnail().getPath()로 참조되는 파일은 이미 “기본 리소스”로
+            // 포함되므로,
+            // 중복을 방지하기 위해 InMemoryFile 목록에서 미리 제거
+            // - AASX 내부에 동일 파일이 여러 번 들어가지 않도록 최적화
             String defaultThumb = env.getAssetAdministrationShells().stream()
                     .map(aas -> aas.getAssetInformation())
                     .filter(ai -> ai != null && ai.getDefaultThumbnail() != null)
@@ -221,13 +370,12 @@ public class JsonToAASXService {
                     .orElse(null);
 
             if (defaultThumb != null) {
-                // FileUploadService 의 normalizePath 로 비교
                 String normThumb = fileUploadService.normalizePath(defaultThumb);
                 inMemFiles.removeIf(imf -> fileUploadService.normalizePath(imf.getPath()).equals(normThumb));
                 log.info("default-thumbnail '{}' (normalized='{}') 은 inMemFiles 에서 제거", defaultThumb, normThumb);
             }
 
-            // 4) 중복 제거 (path 기준)
+            // 5) 중복된 InMemoryFile(동일 path) 제거
             if (includeFiles && !inMemFiles.isEmpty()) {
                 Map<String, InMemoryFile> deduped = inMemFiles.stream()
                         .collect(Collectors.toMap(
@@ -237,22 +385,24 @@ public class JsonToAASXService {
                 inMemFiles = new ArrayList<>(deduped.values());
             }
 
-            // 5) InMemoryFile 목록 로그
+            // 6) InMemoryFile 목록 로그 출력
             List<String> paths = inMemFiles.stream()
                     .map(InMemoryFile::getPath)
                     .collect(Collectors.toList());
             log.info(">>> InMemoryFiles [{}개]: {}", paths.size(), paths);
 
-            // 6) 파일명 결정
-            String suffix = includeFiles ? "-embed" : "-url";
+            // 7) AASX 파일명 결정: URL-only → "-url.aasx", Revert/embed → "-revert.aasx"
+            String suffix = includeFiles ? "-revert" : "-url";
             String targetName = baseName + suffix + ".aasx";
 
-            // 7) 패키징
+            // 8) AASX 패키징 직렬화
+            // 🟢 XML 직렬화 직전: keys=null → 빈 리스트로 바꿔서 <keys/> 유지
+            ensureEmptySemanticIdKeys(env);
             AASXSerializer serializer = new AASXSerializer(new XmlSerializer());
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             serializer.write(env, inMemFiles, baos);
 
-            // 8) 디스크에 쓰기
+            // 9) tempPath 디렉토리에 AASX 파일로 저장
             Path outPath = Paths.get(tempPath, targetName);
             Files.createDirectories(outPath.getParent());
             Files.write(outPath, baos.toByteArray());
@@ -265,54 +415,27 @@ public class JsonToAASXService {
         }
     }
 
-    /** env 안의 중복 File/Resource 참조를 미리 제거 */
-    /*
-     * private void removeDuplicateRefs(Environment env) {
-     * Set<String> seen = new HashSet<>();
-     * new AssetAdministrationShellElementWalkerVisitor() {
-     * 
-     * @Override
-     * public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File fileEl) {
-     * String val = fileEl.getValue();
-     * if (val != null && !val.startsWith("http") && !seen.add(val)) {
-     * fileEl.setValue(null);
-     * }
-     * }
-     * 
-     * @Override
-     * public void visit(org.eclipse.digitaltwin.aas4j.v3.model.Resource res) {
-     * if (res == null)
-     * return;
-     * String path = res.getPath();
-     * if (path != null && !path.startsWith("http") && !seen.add(path)) {
-     * res.setPath(null);
-     * }
-     * }
-     * }.visit(env);
-     * }
-     */
-
-    /** JSON을 Environment 객체로 파싱 */
-    private Environment parseEnvironment(MultipartFile jsonFile) {
-        try {
-            byte[] raw = jsonFile.getBytes();
-            log.info("JSON snippet: {}...", new String(raw, 0, Math.min(200, raw.length)));
-            return deserializer.read(new ByteArrayInputStream(raw), Environment.class);
-        } catch (IOException | DeserializationException e) {
-            log.error("JSON 파싱 오류: {}", e.getMessage());
-            throw new RuntimeException("JSON 파싱 실패: " + e.getMessage(), e);
-        }
-    }
-
     /**
-     * embed 모드에서 URL→상대경로 치환 (DB에 저장된 path 컬럼 사용)
+     * 🔴 Revert(embed) 모드에서 AASX 내 File/Resource 요소가 보유한 URL을
+     * DB에서 조회한 FilesMeta 정보를 기반으로 실제 상대경로(파일시스템 경로)로 치환
+     *
+     * 1) AssetAdministrationShellElementWalkerVisitor 로 모델 내 모든 File/Resource 순회
+     * 2) URL 값이 http로 시작하면 jsonMetaMap 에서 해당 URL에 매핑된 Deque<FilesMeta>를 꺼냄
+     * 3) FilesMeta.getPath 값을 상대경로로 사용하여
+     * - uploadPath 디렉토리에서 실제 파일을 tempPath/상대경로로 복사
+     * - File/Resource 객체의 value/path 필드를 상대경로로 설정
+     * - semanticId 필드는 null로 설정하여 직렬화 시 오류 방지
+     *
+     * @param env      변환 대상 Environment 객체
+     * @param jsonName 원본 JSON 파일명 (jsonMetaMap 조회 키)
      */
     private void injectInMemoryFiles(Environment env, String jsonName) {
+        // JSON 이름에 매핑된 URL→Deque<FilesMeta> 맵 가져오기
         Map<String, Deque<FilesMeta>> metaMap = jsonMetaMap.getOrDefault(jsonName, Map.of());
 
         new AssetAdministrationShellElementWalkerVisitor() {
             @Override
-            public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File fileEl) {
+            public void visit(File fileEl) {
                 String url = fileEl.getValue();
                 if (url == null || !url.startsWith("http"))
                     return;
@@ -322,7 +445,7 @@ public class JsonToAASXService {
                     log.warn("메타 없음(File): json={} url={}", jsonName, url);
                     return;
                 }
-                FilesMeta meta = deque.pollFirst();
+                FilesMeta meta = deque.pollFirst(); // 해당 URL에 대응하는 첫 번째 FilesMeta 정보를 꺼냄
 
                 log.info("inject(File) 매핑 확인 → url='{}', aasId='{}', submodelId='{}', idShort='{}', path='{}'",
                         url, meta.getAasId(), meta.getSubmodelId(), meta.getIdShort(), meta.getPath());
@@ -330,15 +453,16 @@ public class JsonToAASXService {
                 try {
                     String hash = meta.getHash();
                     String ext = meta.getExtension();
-                    String relPath = meta.getPath();
+                    String relPath = meta.getPath(); // DB에 저장된 상대경로
 
+                    // uploadPath/{hash}{ext} 에서 실제 파일을 읽어 tempPath/{relPath} 로 복사
                     Path dst = Paths.get(tempPath, relPath);
                     Files.createDirectories(dst.getParent());
                     Files.copy(Paths.get(uploadPath, hash + ext),
                             dst, StandardCopyOption.REPLACE_EXISTING);
 
+                    // 모델 내 File 요소의 value를 상대경로로 치환
                     fileEl.setValue(relPath);
-                    fileEl.setSemanticId(null);
                     log.info("치환 완료(File): {} → {}", url, relPath);
 
                 } catch (Exception ex) {
@@ -347,7 +471,7 @@ public class JsonToAASXService {
             }
 
             @Override
-            public void visit(org.eclipse.digitaltwin.aas4j.v3.model.Resource res) {
+            public void visit(Resource res) {
                 if (res == null)
                     return;
                 String url = res.getPath();
@@ -369,11 +493,13 @@ public class JsonToAASXService {
                     String ext = meta.getExtension();
                     String relPath = meta.getPath();
 
+                    // 실제 파일 복사
                     Path dst = Paths.get(tempPath, relPath);
                     Files.createDirectories(dst.getParent());
                     Files.copy(Paths.get(uploadPath, hash + ext),
                             dst, StandardCopyOption.REPLACE_EXISTING);
 
+                    // 모델 내 Resource 요소의 path를 상대경로로 치환
                     res.setPath(relPath);
                     log.info("치환 완료(Resource): {} → {}", url, relPath);
 
@@ -384,44 +510,14 @@ public class JsonToAASXService {
         }.visit(env);
     }
 
-    /** semanticId 가 남아 있으면 AASXSerializer가 에러를 뱉기 때문에 제거 */
-    private void clearSemanticIds(Environment env) {
-        if (env.getSubmodels() != null) {
-            env.getSubmodels().forEach(sm -> clearIdsRecursive(sm.getSubmodelElements()));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void clearIdsRecursive(List<?> elements) {
-        if (elements == null)
-            return;
-        for (Object el : elements) {
-            if (el instanceof org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement) {
-                try {
-                    var sme = (org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement) el;
-                    sme.getClass()
-                            .getMethod("setSemanticId", org.eclipse.digitaltwin.aas4j.v3.model.Reference.class)
-                            .invoke(sme, new Object[] { null });
-                } catch (Exception ignore) {
-                }
-            }
-            if (el instanceof org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection) {
-                clearIdsRecursive(((org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection) el).getValue());
-            } else {
-                try {
-                    var gv = el.getClass().getMethod("getValue");
-                    var val = gv.invoke(el);
-                    if (val instanceof List<?>)
-                        clearIdsRecursive((List<?>) val);
-                } catch (Exception ignore) {
-                }
-            }
-        }
-    }
-
     /**
-     * injectInMemoryFiles() 가 복사해 놓은
-     * tempPath/name.ext 파일들을 InMemoryFile 로 읽어서 반환
+     * 🔵 injectInMemoryFiles()가 복사해 놓은 tempPath/{path} 파일들을 읽어
+     * InMemoryFile 인스턴스 목록으로 반환
+     * 
+     * AASXSerializer.write 시 실제 파일 컨텐츠를 포함하려면 InMemoryFile 리스트가 필요
+     *
+     * @param env AASX 생성 대상 Environment 객체
+     * @return InMemoryFile 목록 (파일 바이트 + 경로)
      */
     public List<InMemoryFile> getInMemoryFiles(Environment env) {
         List<InMemoryFile> files = new ArrayList<>();
@@ -457,6 +553,26 @@ public class JsonToAASXService {
         return files;
     }
 
+    /**
+     * 🟢 semanticId.keys가 null인 Reference 들을 모두 빈 리스트로 초기화
+     */
+    private void ensureEmptySemanticIdKeys(Environment env) {
+        new AssetAdministrationShellElementWalkerVisitor() {
+            @Override
+            public void visit(SubmodelElement el) {
+                Reference sem = el.getSemanticId();
+                if (sem != null && sem.getKeys() == null) {
+                    sem.setKeys(new ArrayList<>()); // 빈 리스트 할당
+                }
+            }
+        }.visit(env);
+    }
+
+    /** 기본 모드 (revertPaths=false) */
+    public List<Environment> uploadJsonFiles(MultipartFile[] jsonFiles) {
+        return uploadJsonFiles(jsonFiles, false);
+    }
+
     // 이하 getter들…
     public List<String> getUploadedAasxFileNames() {
         return new ArrayList<>(uploadedAasxFileNames);
@@ -470,49 +586,4 @@ public class JsonToAASXService {
         return new ArrayList<>(uploadedEnvironments);
     }
 
-    private void saveJsonMetaInfos(String jsonName, Environment env) {
-        String aasId = env.getAssetAdministrationShells().get(0).getId();
-        Map<String, Deque<FilesMeta>> map = new HashMap<>();
-
-        for (var sm : env.getSubmodels()) {
-            String submodelId = sm.getId();
-            new AssetAdministrationShellElementWalkerVisitor() {
-                @Override
-                public void visit(org.eclipse.digitaltwin.aas4j.v3.model.File f) {
-                    String url = f.getValue();
-                    if (url == null || !url.startsWith("http"))
-                        return;
-
-                    FilesMeta meta = uploadMapper.selectFileMetaByPath(aasId, submodelId, f.getIdShort());
-                    if (meta != null) {
-                        // URL 하나당 여러 Meta를 Deque에 순서대로 담는다
-                        map.computeIfAbsent(url, k -> new ArrayDeque<>())
-                                .add(meta);
-                    } else {
-                        log.warn("DB에 files_meta 없음: {}, {}, {}", aasId, submodelId, f.getIdShort());
-                    }
-                }
-
-                @Override
-                public void visit(org.eclipse.digitaltwin.aas4j.v3.model.Resource r) {
-                    if (r == null)
-                        return;
-                    String url = r.getPath();
-                    if (url == null || !url.startsWith("http"))
-                        return;
-
-                    String idShort = ((SubmodelElement) r).getIdShort();
-                    FilesMeta meta = uploadMapper.selectFileMetaByPath(aasId, submodelId, idShort);
-                    if (meta != null) {
-                        map.computeIfAbsent(url, k -> new ArrayDeque<>())
-                                .add(meta);
-                    } else {
-                        log.warn("DB에 files_meta 없음(Resource): {}, {}, {}", aasId, submodelId, idShort);
-                    }
-                }
-            }.visit(env);
-        }
-
-        jsonMetaMap.put(jsonName, map);
-    }
 }

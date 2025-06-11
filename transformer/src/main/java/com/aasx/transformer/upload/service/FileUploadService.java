@@ -23,6 +23,7 @@ import com.aasx.transformer.upload.dto.FilesMeta;
 import com.aasx.transformer.upload.mapper.UploadMapper;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -61,6 +63,8 @@ public class FileUploadService {
     public final List<String> uploadedFileNames = new CopyOnWriteArrayList<>();
     // 업로드된 AASX 파일로부터 변환된 Environment 목록
     private final List<Environment> uploadedEnvironments = new CopyOnWriteArrayList<>();
+    // AASX 바이트 배열 캐시
+    private final Map<String, byte[]> aasxBytesMap = new ConcurrentHashMap<>();
 
     public List<String> getUploadedFileNames() {
         return new ArrayList<>(uploadedFileNames);
@@ -73,61 +77,50 @@ public class FileUploadService {
     // InMemoryFile의 원본 경로와 해시 매핑 (중복 체크, DB 등록 시 사용)
     // private final Map<String, String> pathToHashMap = new ConcurrentHashMap<>();
 
-    // ✅ AASX 파일 업로드 및 Environment 변환
-    // 파일 확장자 체크, 파일 저장, deserializer 수행
+    /**
+     * AASX 업로드
+     * - .aasx를 디스크에 쓰지 않고, 바이트 배열로 읽어서 메모리 캐시에 저장
+     * - Environment 생성 후 내부 경로 정보만 파싱
+     */
     public List<Environment> uploadFiles(MultipartFile[] files) {
         List<Environment> results = new ArrayList<>();
         uploadedFileNames.clear();
         uploadedEnvironments.clear();
+        aasxBytesMap.clear();
 
         for (MultipartFile file : files) {
-
             String fileName = file.getOriginalFilename();
-
-            log.info("업로드된 파일 이름: {}", fileName);
-            log.info("업로드된 파일 크기: {}", file.getSize());
+            if (fileName == null || !fileName.toLowerCase().endsWith(".aasx")) {
+                throw new IllegalArgumentException("AASX 파일(.aasx)만 업로드 가능합니다: " + fileName);
+            }
 
             try {
-                // .aasx 파일만 처리
-                if (fileName == null || !fileName.toLowerCase().endsWith(".aasx")) {
-                    throw new IllegalArgumentException("AASX 파일(.aasx)만 업로드 가능합니다: " + fileName);
+                // 1) 바이트 배열로 읽어서 캐시
+                byte[] aasxBytes = file.getBytes();
+                aasxBytesMap.put(fileName, aasxBytes);
+
+                // 2) 첫 번째 스트림: deserializeAASXFile → Environment 생성
+                Environment env;
+                try (InputStream isEnv = new ByteArrayInputStream(aasxBytes)) {
+                    env = aasxFileDeserializer.deserializeAASXFile(isEnv);
+                }
+                if (env == null) {
+                    log.warn("AASX 파싱 실패: {}", fileName);
+                    aasxBytesMap.remove(fileName);
+                    continue;
                 }
 
-                String filePath = uploadPath + File.separator + fileName;
-                File destFile = new File(filePath);
-
-                // 업로드 디렉토리 생성
-                File uploadDir = new File(uploadPath);
-                if (!uploadDir.exists()) {
-                    uploadDir.mkdirs();
-                    log.info("디렉토리 생성: {}", uploadPath);
-                } else {
-                    log.info("디렉토리 존재");
-                }
-                try (FileOutputStream fos = new FileOutputStream(destFile)) {
-                    fos.write(file.getBytes());
-                }
-                log.info("파일 저장 후 경로: {}", destFile.getAbsolutePath());
-
-                // AASX 파일을 Environment로 변환
-                InputStream inputStream = file.getInputStream();
-                Environment environment = aasxFileDeserializer.deserializeAASXFile(inputStream);
-
-                if (environment != null) {
-                    results.add(environment);
-                    uploadedEnvironments.add(environment);
-                    uploadedFileNames.add(fileName);
-                } else {
-                    if (destFile.exists()) {
-                        destFile.delete();
-                        log.warn("AASX 형식이 아니므로 삭제됨: {}", fileName);
-                    }
-                }
+                // 3) 파싱된 Environment 저장 (디스크에는 쓰지 않음)
+                results.add(env);
+                uploadedEnvironments.add(env);
+                uploadedFileNames.add(fileName);
+                log.info("AASX 파싱 완료 (디스크 저장 없음): {}", fileName);
 
             } catch (Exception e) {
-                log.error("파일 변환 중 오류 발생: {}", e.getMessage());
+                log.error("업로드 처리 중 오류 발생: {}", e.getMessage(), e);
             }
         }
+
         return results;
     }
 
@@ -136,36 +129,48 @@ public class FileUploadService {
         return new ArrayList<>(uploadedFileNames);
     }
 
-    // ✅ ★ helper 1) InMemoryFile 객체 목록을 반환 (환경 내 참조된 파일 경로 처리)
+    /**
+     * 메모리 캐싱된 AASX 바이트 배열로부터 OPCPackage를 열어 InMemoryFile 목록 반환
+     * (더 이상 uploadPath에 .aasx 파일을 읽지 않도록 변경됨)
+     */
     public Map<String, List<InMemoryFile>> getInMemoryFilesFromReferencedPaths() {
         Map<String, List<InMemoryFile>> inMemoryFilesMap = new HashMap<>();
-        // 업로드된 파일 목록과 environment 목록은 같은 인덱스를 가짐
+
         for (int i = 0; i < uploadedFileNames.size(); i++) {
             String fileName = uploadedFileNames.get(i);
             Environment environment = uploadedEnvironments.get(i);
-            // 1) AASX에서 참조된 파일 경로들 추출
-            List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
 
-            // 2) 절대 URI(외부 URL)는 건너뛰기
+            // 1) Environment에서 내부 참조된 파일 경로 리스트를 추출
+            List<String> paths = aasxFileDeserializer.parseReferencedFilePathsFromAASX(environment);
+            // 2) 외부 URL(절대 URI)은 건너뛴다
             paths.removeIf(p -> p.startsWith("http://") || p.startsWith("https://"));
 
-            // 3) 남은 상대 경로가 없으면 빈 리스트로 매핑
             if (paths.isEmpty()) {
                 inMemoryFilesMap.put(fileName, Collections.emptyList());
                 continue;
             }
 
-            // 4) OPCPackage로 AASX 내부 리소스 읽기
-            String aasxFilePath = uploadPath + File.separator + fileName;
-            File aasxFile = new File(aasxFilePath);
-            try (OPCPackage aasxRoot = OPCPackage.open(aasxFile)) {
-                List<InMemoryFile> inMemoryFiles = aasxFileDeserializer.readFiles(aasxRoot, paths);
+            // 3) 캐시된 바이트 배열로 OPCPackage를 연다 (디스크 파일 대신)
+            byte[] aasxBytes = aasxBytesMap.get(fileName);
+            if (aasxBytes == null) {
+                log.warn("AASX 바이트 캐시 없음: {} → 빈 리스트 반환", fileName);
+                inMemoryFilesMap.put(fileName, Collections.emptyList());
+                continue;
+            }
+
+            try (InputStream isPkg = new ByteArrayInputStream(aasxBytes);
+                    OPCPackage pkg = OPCPackage.open(isPkg)) {
+
+                // 4) deserializer.readFiles(...) 호출하여 InMemoryFile 목록 생성
+                List<InMemoryFile> inMemoryFiles = aasxFileDeserializer.readFiles(pkg, paths);
                 inMemoryFilesMap.put(fileName, inMemoryFiles);
+
             } catch (InvalidFormatException | IOException e) {
                 log.error("AASX 내부 파일 읽기 오류 ({}): {}", fileName, e.getMessage(), e);
                 inMemoryFilesMap.put(fileName, Collections.emptyList());
             }
         }
+
         return inMemoryFilesMap;
     }
 
@@ -188,6 +193,15 @@ public class FileUploadService {
         Map<String, Environment> updatedEnvironmentMap = new LinkedHashMap<>();
         // 1) AASX 내부 참조 파일 가져오기
         Map<String, List<InMemoryFile>> inMemoryFilesMap = getInMemoryFilesFromReferencedPaths();
+
+        // uploadPath 폴더가 없으면 생성
+        File uploadDir = new File(uploadPath);
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs();
+            log.info("디렉토리 생성: {}", uploadPath);
+        } else {
+            log.info("디렉토리 존재: {}", uploadPath);
+        }
 
         for (Map.Entry<String, List<InMemoryFile>> entry : inMemoryFilesMap.entrySet()) {
             String fileNameKey = entry.getKey(); // AASX 파일 이름
@@ -269,12 +283,19 @@ public class FileUploadService {
                     }
 
                     // 3) 물리 파일로 저장 (중복 저장 방지)
-                    File newFile = new File(uploadPath + File.separator + hash + meta.getExtension());
-                    if (!newFile.exists()) {
-                        try (FileOutputStream fos = new FileOutputStream(newFile)) {
-                            fos.write(inMemoryFile.getFileContent());
+                    String ext = meta.getExtension();
+                    File destFile = new File(uploadPath + File.separator + hash + ext);
+                    try {
+                        if (!destFile.exists()) {
+                            try (FileOutputStream fos = new FileOutputStream(destFile)) {
+                                fos.write(inMemoryFile.getFileContent());
+                            }
+                            log.info("첨부파일 디스크 저장됨: {}", destFile.getAbsolutePath());
+                        } else {
+                            log.info("이미 존재하는 파일: {}", destFile.getAbsolutePath());
                         }
-                        log.info("첨부파일 저장됨: {}", newFile.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.error("첨부파일 저장 실패 (경로: {}): {}", destFile.getAbsolutePath(), e.getMessage(), e);
                     }
 
                     // 4) 다운로드 URL 생성 및 매핑

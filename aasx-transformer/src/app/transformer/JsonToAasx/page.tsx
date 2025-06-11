@@ -107,7 +107,7 @@ const JsonToAasxPage = () => {
         </Card>
 
         {/* 선택된 JSON 파일의 첨부파일 목록 */}
-        {/* <Card className="mt-12">
+      {/*   <Card className="mt-12">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">
               {selectedJsonFile}
@@ -126,7 +126,6 @@ const JsonToAasxPage = () => {
                 </thead>
                 <tbody>
                   {attachmentFileMetas.map((meta, idx) => {
-                    // meta.hash와 meta.extension을 결합하여 전체 파일명 문자열 생성
                     const fullHashAndExt = meta.hash + meta.extension;
                     return (
                       <tr key={idx} className="border-b">
@@ -164,7 +163,7 @@ const JsonToAasxPage = () => {
           <CardContent>
             {jsonFiles.length > 0 ? (
               jsonFiles.map((file) => (
-                <div key={file} className="flex justify-between items-center my-2">
+                <div key={file} className="flex justify-between items-center gap-4 my-2">
                   <span>{file}</span>
                   <Button size="sm" onClick={() => downloadWithUrlAasx(file)}>
                     URL in AASX

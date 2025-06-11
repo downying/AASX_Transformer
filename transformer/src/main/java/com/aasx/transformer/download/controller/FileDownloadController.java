@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -56,8 +57,20 @@ public class FileDownloadController {
     public ResponseEntity<List<FilesMeta>> listAttachmentFileMetasByPackageFile(
             @PathVariable String packageFileName) {
 
-        List<FilesMeta> metas = fileDownloadService.getFileMetasByPackageFileName(packageFileName);
-        return ResponseEntity.ok(metas);
+        // 1) AASX 업로드된 이름이면 기존 로직 실행
+        if (fileUploadService.getUploadedFileNames().contains(packageFileName)) {
+            List<FilesMeta> metas = fileDownloadService.getFileMetasByPackageFileName(packageFileName);
+            return ResponseEntity.ok(metas);
+        }
+
+        // 2) JSON→AASX 변환된 이름이면 JsonToAASXService 로직 실행
+        if (jsonToAasxService.getUploadedJsonFileNames().contains(packageFileName)) {
+            List<FilesMeta> metas = fileDownloadService.getJsonConvertedFileMetas(packageFileName);
+            return ResponseEntity.ok(metas);
+        }
+
+        // 3) 그 외: 빈 리스트 응답 (경고 로그 없이)
+        return ResponseEntity.ok(Collections.emptyList());
     }
 
     /**
@@ -104,22 +117,19 @@ public class FileDownloadController {
      */
     @GetMapping("/download/{hashAndExt:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String hashAndExt) {
-        // 1) Hash와 Extension 분리 시도
+        // 1) 해시/확장자 분리
         int dot = hashAndExt.lastIndexOf('.');
-        String hash;
-        String ext;
+        String hash, ext;
         if (dot > 0) {
             hash = hashAndExt.substring(0, dot);
             ext = hashAndExt.substring(dot); // ".png" 등
         } else {
-            // 확장자가 없이 호출된 경우
             hash = hashAndExt;
-            // DB에서 메타를 먼저 조회하여 확장자를 꺼냄
             FilesMeta meta0 = fileDownloadService.getMetaByHash(hash);
             if (meta0 == null) {
                 return ResponseEntity.notFound().build();
             }
-            ext = meta0.getExtension(); // ".jpg", ".pdf" 등
+            ext = meta0.getExtension(); // ".jpg" 등
         }
 
         // 2) DB에서 메타 조회
@@ -128,15 +138,32 @@ public class FileDownloadController {
             return ResponseEntity.notFound().build();
         }
 
+        // contentType을 확인
+        String contentType = meta.getContentType();
+        log.info("==> FilesMeta.getContentType() = [{}]", contentType);
+
         // 3) 물리 파일 로드
         Resource resource = fileDownloadService.downloadFileByHash(hash);
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
 
-        // 4) inline 미리보기 헤더 설정
+        // 4) 올바른 MIME 타입
+        MediaType mediaType;
+        try {
+            mediaType = MediaType.parseMediaType(meta.getContentType());
+        } catch (Exception e) {
+            // 만약 meta.getContentType()이 잘못된 값이라면, 안전하게 이미지/바이너리로 처리
+            mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        // 5) inline 으로 보내되, Accept-Ranges를 함께 달아서 브라우저에 “바이너리 원격 다운로드” 기능을 알려준다
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION,
-                "inline; filename=\"" + hash + ext + "\"");
+        // inline → 브라우저 뷰어(이미지/PDF 뷰어 등)를 사용하도록 요청
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + hash + ext + "\"");
+        // 바이트 단위 범위 요청을 허용하도록
+        headers.add("Accept-Ranges", "bytes");
 
-        MediaType mediaType = MediaType.parseMediaType(meta.getContentType());
         try {
             return ResponseEntity.ok()
                     .headers(headers)
@@ -163,18 +190,14 @@ public class FileDownloadController {
     // ======================= AASX Download =======================
 
     /**
-     * ✅ URL 포함 AASX 패키지 다운로드 (tempPath에서 바로 읽음)
+     * ✅ URL-only AASX 패키지 다운로드
+     * 프론트엔드에서는 이미 “{base}-url.aasx” 형태로 호출함.
      */
-    @GetMapping("/json/download/url/{fileName:.+}")
-    public ResponseEntity<Resource> downloadWithUrlAasx(@PathVariable String fileName) throws IOException {
-        log.info("URL AASX 다운로드 요청, fileName: {}", fileName);
-        // fileName은 원래 JSON 파일명, ".json" 확장자 포함
-        String base = fileName.toLowerCase().endsWith(".json")
-                ? fileName.substring(0, fileName.length() - 5)
-                : fileName;
-        String aasxName = base + ".aasx";
-
-        Path filePath = Path.of(tempPath, aasxName);
+    @GetMapping("/json/download/url/{aasxFileName:.+}")
+    public ResponseEntity<Resource> downloadWithUrlAasx(@PathVariable String aasxFileName) throws IOException {
+        log.info("URL AASX 다운로드 요청, aasxFileName: {}", aasxFileName);
+        // note: aasxFileName 예시 → "BALL_END_BOSS_ONE_DPP_demo_edited_v3-url.aasx"
+        Path filePath = Path.of(tempPath, aasxFileName);
         if (!Files.exists(filePath)) {
             log.warn("Temp에 AASX 파일이 없습니다: {}", filePath);
             return ResponseEntity.notFound().build();
@@ -182,27 +205,30 @@ public class FileDownloadController {
 
         Resource resource = new FileSystemResource(filePath.toFile());
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + aasxName + "\"")
+                // attachment 헤더: 브라우저가 “파일 저장” 대화상자를 띄우도록 함
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + aasxFileName + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(Files.size(filePath))
                 .body(resource);
     }
 
-    @GetMapping("/json/download/revert/{fileName:.+}")
-    public ResponseEntity<Resource> downloadRevertedAasx(@PathVariable String fileName) throws IOException {
-        // tempPath 에 저장된 `${baseName}.aasx` 파일을 읽어서 반환
-        String base = fileName.toLowerCase().endsWith(".json")
-                ? fileName.substring(0, fileName.length() - 5)
-                : fileName;
-        String aasxName = base + ".aasx";
-        Path filePath = Path.of(tempPath, aasxName);
+    /**
+     * ✅ Revert/embed AASX 패키지 다운로드
+     * 프론트엔드에서는 이미 “{base}-revert.aasx” 형태로 호출함.
+     */
+    @GetMapping("/json/download/revert/{aasxFileName:.+}")
+    public ResponseEntity<Resource> downloadRevertedAasx(@PathVariable String aasxFileName) throws IOException {
+        log.info("Revert AASX 다운로드 요청, aasxFileName: {}", aasxFileName);
+        // aasxFileName 예시 → "BALL_END_BOSS_ONE_DPP_demo_edited_v3-revert.aasx"
+        Path filePath = Path.of(tempPath, aasxFileName);
         if (!Files.exists(filePath)) {
             log.warn("Temp에 AASX 파일이 없습니다: {}", filePath);
             return ResponseEntity.notFound().build();
         }
+
         Resource resource = new FileSystemResource(filePath.toFile());
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + aasxName + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + aasxFileName + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(Files.size(filePath))
                 .body(resource);

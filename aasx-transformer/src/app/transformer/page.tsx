@@ -63,10 +63,18 @@ const TransformerPage = () => {
     <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
       <div className="max-w-screen-xl">
         {/* 홈 버튼 */}
-        <div className="flex items-start mb-4">
+        <div className="flex justify-between mb-4">
           <Link href="/">
             <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white">
               Home
+            </Button>
+          </Link>
+          <Link href="/main/uploadJSON">
+            <Button
+              variant="default"
+              className="bg-pink-200 hover:bg-pink-300 text-black font-bold border border-purple-300"
+            >
+              Upload JSON
             </Button>
           </Link>
         </div>

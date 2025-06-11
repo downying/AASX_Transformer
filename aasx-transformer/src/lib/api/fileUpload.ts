@@ -72,7 +72,7 @@ export const uploadJson = async (formData: FormData): Promise<string[]> => {
       { headers: { "Content-Type": "multipart/form-data" } }
     );
 
-    // res.data 는 ["base-url.aasx", "base-embed.aasx"]
+    // res.data 는 ["base-url.aasx", "base-revert.aasx"]
     console.log("uploadJson → 생성된 AASX 파일명:", res.data);
     return res.data;
 

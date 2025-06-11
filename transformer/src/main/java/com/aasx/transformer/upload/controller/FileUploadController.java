@@ -80,6 +80,8 @@ public class FileUploadController {
         return ResponseEntity.ok(uploadedFileNames);
     }
 
+    // ======================= AASX Download =======================
+
     // ✅ 업로드된 JSON 파일 이름 조회
     @GetMapping("/uploadedJsonFileNames")
     public ResponseEntity<List<String>> listUploadedJsonFiles() {
@@ -89,7 +91,7 @@ public class FileUploadController {
     }
 
     /**
-     * ✅ JSON → AASX 패키지 생성 (URL-only, embed-files 두 가지 variant)
+     * ✅ JSON → AASX 패키지 생성 (URL-only, revert-files 두 가지 variant)
      *    업로드된 JSON을 바탕으로 두 가지 AASX를 모두 생성하고
      *    생성된 파일명 리스트를 그대로 반환합니다.
      */

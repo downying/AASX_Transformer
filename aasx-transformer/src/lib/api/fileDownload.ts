@@ -163,61 +163,74 @@ export async function fetchUploadedFiles(offset: number, limit: number): Promise
   }
 }
 
-// URL 포함 AASX 패키지 다운로드
+// ======================= AASX Download =======================
+
+// ✅ URL 포함 AASX 패키지 다운로드
 export async function downloadWithUrlAasx(fileName: string) {
   try {
-    // 1) tempPath 에 생성된 .aasx 를 GET 으로 읽어오기
+    // 1) fileName이 "BALL_END_BOSS_ONE_DPP_demo_edited_v3.json" 형태로 들어오면,
+    //    끝의 ".json"을 떼고 "-url.aasx"를 붙여서 정확한 AASX 파일명을 만듭니다.
+    const base = fileName.replace(/\.json$/i, "");
+    const aasxFile = `${base}-url.aasx`;
+
+    // 2) 백엔드에 실제 존재하는 AASX 이름으로 GET 요청
     const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json/download/url/${encodeURIComponent(fileName)}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json/download/url/${encodeURIComponent(aasxFile)}`,
       { responseType: "blob" }
     );
 
-    // 2) Content-Disposition 헤더에서 실제 다운로드 파일명 추출
+    // 3) Content-Disposition 헤더에 담긴 실제 파일명을 가져오거나, aasxFile로 대체
     const disposition = response.headers["content-disposition"];
-    let aasxName = fileName.replace(/\.json$/i, "") + ".aasx";
+    let downloadName = aasxFile;
     if (disposition) {
       const m = disposition.match(/filename="(.+?)"/);
-      if (m) aasxName = m[1];
+      if (m && m[1]) downloadName = m[1];
     }
 
-    // 3) Blob 으로 다운로드 트리거
+    // 4) Blob으로 다운로드 트리거
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.download = aasxName;
+    link.download = downloadName;
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (e) {
     console.error("URL AASX 다운로드 실패:", e);
-    throw new Error("URL AASX 다운로드에 실패했습니다.");
+    alert("URL AASX 다운로드에 실패했습니다.");
   }
 }
 
-// 상대경로 복원 AASX 패키지 다운로드
+
+// ✅ 상대경로 복원 AASX 패키지 다운로드
 export async function downloadRevertedAasx(fileName: string) {
   try {
+    const base = fileName.replace(/\.json$/i, "");
+    const aasxFile = `${base}-revert.aasx`;
+
     const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json/download/revert/${encodeURIComponent(fileName)}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/transformer/json/download/revert/${encodeURIComponent(aasxFile)}`,
       { responseType: "blob" }
     );
+
     const disposition = response.headers["content-disposition"];
-    let aasxName = fileName.replace(/\.json$/i, "") + ".aasx";
+    let downloadName = aasxFile;
     if (disposition) {
       const m = disposition.match(/filename="(.+?)"/);
-      if (m) aasxName = m[1];
+      if (m && m[1]) downloadName = m[1];
     }
+
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.download = aasxName;
+    link.download = downloadName;
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (e) {
     console.error("복원 AASX 다운로드 실패:", e);
-    throw new Error("복원 AASX 다운로드에 실패했습니다.");
+    alert("복원 AASX 다운로드에 실패했습니다.");
   }
 }
