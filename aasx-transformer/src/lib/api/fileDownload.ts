@@ -46,6 +46,7 @@ export const previewFile = async (meta: { hash: string; extension: string; conte
     throw new Error("파일 미리보기에 실패했습니다.");
   }
 };
+
 /** 
  * ✅ 서버에서 업데이트된 Environment JSON 파일을 다운로드
  * @param fileName 확장자를 포함한 파일 이름 

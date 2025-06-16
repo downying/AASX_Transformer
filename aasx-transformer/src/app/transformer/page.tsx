@@ -59,45 +59,43 @@ const TransformerPage = () => {
     loadAttachmentMetas();
   }, [selectedPackageFile]);
 
-  return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground">
-      <div className="max-w-screen-xl">
-        {/* 홈 버튼 */}
+return (
+    <div className="flex flex-col items-center justify-center w-full h-full bg-background text-foreground px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-4xl">
+        {/* 홈 + 업로드 버튼 */}
         <div className="flex justify-between mb-4">
           <Link href="/">
-            <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white">
+            <Button variant="default" className="mt-4 bg-white text-black border-black hover:bg-black hover:text-white">
               Home
             </Button>
           </Link>
           <Link href="/main/uploadJSON">
-            <Button
-              variant="default"
-              className="bg-pink-200 hover:bg-pink-300 text-black font-bold border border-purple-300"
-            >
+            <Button variant="default" className="mt-4 bg-white text-black border-black hover:bg-black hover:text-white">
               Upload JSON
             </Button>
           </Link>
         </div>
 
-        {/* 업로드된 패키지 파일 목록 */}
+        {/* 업로드된 AASX 파일 목록 */}
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl md:text-3xl font-semibold">
+            <CardTitle className="text-xl sm:text-2xl font-semibold">
               Uploaded AASX Files
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full max-w-5xl">
+            <div className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed border-border rounded-lg bg-muted w-full">
               {uploadedFiles.length > 0 ? (
-                <ul className="w-full text-center">
+                <ul className="w-full text-center space-y-2">
                   {uploadedFiles.map((file, idx) => {
                     const isSelected = file === selectedPackageFile;
                     return (
                       <li
                         key={idx}
                         onClick={() => setSelectedPackageFile(file)}
-                        className={`cursor-pointer py-2 px-4 hover:underline min-h-[40px] ${isSelected ? "bg-blue-100 font-bold" : "bg-transparent"
-                          }`}
+                        className={`cursor-pointer py-2 px-4 hover:underline min-h-[40px] rounded ${
+                          isSelected ? "bg-blue-100 font-bold" : "bg-transparent"
+                        }`}
                       >
                         {file}
                       </li>
@@ -111,71 +109,81 @@ const TransformerPage = () => {
           </CardContent>
         </Card>
 
-        {/* 선택된 패키지 파일의 첨부파일 목록 – DB의 파일 메타 정보를 기반 */}
-        <Card className="mt-12">
+        {/* 선택된 패키지 파일의 첨부파일 메타 */}
+        <Card className="mt-8">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-xl sm:text-2xl">
               {selectedPackageFile}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {attachmentFileMetas.length > 0 ? (
-              <table className="w-full table-auto border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-center py-2 px-4">Hash</th>
-                    <th className="text-center py-2 px-4">ContentType</th>
-                    <th className="text-center py-2 px-4">Extension</th>
-                    <th className="text-center py-2 px-4">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attachmentFileMetas.map((meta, idx) => {
-                    // meta.hash와 meta.extension을 결합하여 전체 파일명 문자열 생성
-                    const fullHashAndExt = meta.hash + meta.extension;
-                    return (
-                      <tr key={idx} className="border-b">
-                        <td className="text-center py-2 px-4">{meta.hash}</td>
-                        <td className="text-center py-2 px-4">{meta.contentType}</td>
-                        <td className="text-center py-2 px-4">{meta.extension}</td>
-                        <td className="py-2 px-4">
-                          <div className="flex justify-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => previewFile(meta)}>
-                              Viewer
-                            </Button>
-                            <Button size="sm" onClick={() => downloadFile(fullHashAndExt)}>
-                              Download
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full table-auto border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-center py-2 px-4">Hash</th>
+                      <th className="text-center py-2 px-4">ContentType</th>
+                      <th className="text-center py-2 px-4">Extension</th>
+                      <th className="text-center py-2 px-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {attachmentFileMetas.map((meta, idx) => {
+                      const fullHashAndExt = meta.hash + meta.extension;
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="text-center py-2 px-4">{meta.hash}</td>
+                          <td className="text-center py-2 px-4">{meta.contentType}</td>
+                          <td className="text-center py-2 px-4">{meta.extension}</td>
+                          <td className="py-2 px-4">
+                            <div className="flex flex-col sm:flex-row justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => previewFile(meta)}
+                              >
+                                Viewer
+                              </Button>
+                              <Button size="sm" onClick={() => downloadFile(fullHashAndExt)}>
+                                Download
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <p>No attachment file meta available for this package.</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Environment JSON 다운로드 (패키지 파일 관련) */}
-        <Card className="mt-12">
+        {/* Environment JSON 다운로드 */}
+        <Card className="mt-8">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl md:text-3xl font-semibold">
+            <CardTitle className="text-xl sm:text-2xl font-semibold">
               Download Environment JSON
             </CardTitle>
           </CardHeader>
           <CardContent>
             {uploadedFiles.length > 0 ? (
-              uploadedFiles.map((file) => (
-                <div key={file} className="flex justify-between items-center my-2">
-                  <span>{file}</span>
-                  <Button onClick={() => downloadEnvironment(file)} size="sm">
-                    Download to JSON
-                  </Button>
-                </div>
-              ))
+              <div className="space-y-4">
+                {uploadedFiles.map((file) => (
+                  <div
+                    key={file}
+                    className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded shadow gap-2"
+                  >
+                    <span className="font-medium">{file}</span>
+                    <Button size="sm" onClick={() => downloadEnvironment(file)}>
+                      Download to JSON
+                    </Button>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p>No files available for JSON download.</p>
             )}

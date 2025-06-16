@@ -138,7 +138,7 @@ const MainPage = () => {
         {/* 홈으로 돌아가는 링크 */}
         <div className="flex items-start mb-4">
           <Link href="/">
-            <Button className="mt-4 bg-white text-black border border-black hover:bg-black hover:text-white" variant="default">
+            <Button variant="default" className="mt-4 bg-white text-black border-black hover:bg-black hover:text-white">
               Home
             </Button>
           </Link>

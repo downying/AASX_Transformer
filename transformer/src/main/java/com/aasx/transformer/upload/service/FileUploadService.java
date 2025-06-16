@@ -78,7 +78,7 @@ public class FileUploadService {
     // private final Map<String, String> pathToHashMap = new ConcurrentHashMap<>();
 
     /**
-     * AASX 업로드
+     * ✅ AASX 업로드
      * - .aasx를 디스크에 쓰지 않고, 바이트 배열로 읽어서 메모리 캐시에 저장
      * - Environment 생성 후 내부 경로 정보만 파싱
      */
@@ -99,7 +99,7 @@ public class FileUploadService {
                 byte[] aasxBytes = file.getBytes();
                 aasxBytesMap.put(fileName, aasxBytes);
 
-                // 2) 첫 번째 스트림: deserializeAASXFile → Environment 생성
+                // 2) 캐시된 바이트 배열로 Environment 파싱
                 Environment env;
                 try (InputStream isEnv = new ByteArrayInputStream(aasxBytes)) {
                     env = aasxFileDeserializer.deserializeAASXFile(isEnv);

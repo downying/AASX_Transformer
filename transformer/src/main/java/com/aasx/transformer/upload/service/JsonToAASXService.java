@@ -32,13 +32,14 @@ import org.eclipse.digitaltwin.aas4j.v3.dataformat.xml.XmlSerializer;
 import org.eclipse.digitaltwin.aas4j.v3.model.AssetAdministrationShell;
 import org.eclipse.digitaltwin.aas4j.v3.model.Environment;
 import org.eclipse.digitaltwin.aas4j.v3.model.File;
+import org.eclipse.digitaltwin.aas4j.v3.model.Key;
 import org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.Resource;
 import org.eclipse.digitaltwin.aas4j.v3.model.Submodel;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
-
-import org.eclipse.digitaltwin.aas4j.v3.model.Key;
+import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElementCollection;
+import org.eclipse.digitaltwin.aas4j.v3.model.impl.DefaultKey;
 import org.eclipse.digitaltwin.aas4j.v3.model.KeyTypes;
 import org.eclipse.digitaltwin.aas4j.v3.model.Reference;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
@@ -135,10 +136,7 @@ public class JsonToAASXService {
             // 1️⃣ JSON → Environment
             Environment env = parseEnvironment(file);
 
-            // 2️⃣ 원래 JSON에 semanticId 보완
-            // fillOnlyExistingSemanticIds(env);
-
-            // 3️⃣ JSON 파일명 → DB 메타정보 미리 조회해서 jsonMetaMap에 저장
+            // 2️⃣ JSON 파일명 → DB 메타정보 미리 조회해서 jsonMetaMap에 저장
             saveJsonMetaInfos(originalName, env);
 
             // 초기 파일/리소스 참조 로그 출력 (디버깅 용도)
@@ -173,7 +171,7 @@ public class JsonToAASXService {
             uploadedFileNames.add(originalName);
             uploadedEnvironments.add(env);
 
-            // 4️⃣ 실제로 AASX 파일을 생성·저장
+            // 3️ 실제로 AASX 파일을 생성·저장
             String baseName = deriveBaseName(originalName);
             writeAasx(env, baseName, revertPaths, originalName);
         }
@@ -207,7 +205,7 @@ public class JsonToAASXService {
     }
 
     /**
-     * 3️⃣ JSON 이름(jsonName)과 Environment(env)를 받아서
+     * 2️⃣ JSON 이름(jsonName)과 Environment(env)를 받아서
      * URL → FilesMeta Deque 매핑을 생성하는 메소드
      */
     private void saveJsonMetaInfos(String jsonName, Environment env) {
@@ -291,7 +289,7 @@ public class JsonToAASXService {
     }
 
     /**
-     * 4️⃣ 파일명에서 ".json" 확장자를 제거한 기본 이름을 반환
+     * 3️ 파일명에서 ".json" 확장자를 제거한 기본 이름을 반환
      * 예: "example.json" → "example"
      *
      * @param originalName JSON 파일의 원래 이름
@@ -306,7 +304,7 @@ public class JsonToAASXService {
     }
 
     /**
-     * 4️⃣ AASX 패키지 파일을 실제로 생성하고 디스크에 저장하는 헬퍼 메소드
+     * 3️ AASX 패키지 파일을 실제로 생성하고 디스크에 저장하는 헬퍼 메소드
      *
      * 1) revertPaths == true: URL을 로컬 상대경로로 치환 (injectInMemoryFiles)
      * 2) 모델 내 File/Resource 전체 참조 로그 출력 (디버깅 용도)
@@ -396,8 +394,6 @@ public class JsonToAASXService {
             String targetName = baseName + suffix + ".aasx";
 
             // 8) AASX 패키징 직렬화
-            // 🟢 XML 직렬화 직전: keys=null → 빈 리스트로 바꿔서 <keys/> 유지
-            ensureEmptySemanticIdKeys(env);
             AASXSerializer serializer = new AASXSerializer(new XmlSerializer());
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             serializer.write(env, inMemFiles, baos);
@@ -551,26 +547,6 @@ public class JsonToAASXService {
             }
         }.visit(env);
         return files;
-    }
-
-    /**
-     * 🟢 semanticId.keys가 null인 Reference 들을 모두 빈 리스트로 초기화
-     */
-    private void ensureEmptySemanticIdKeys(Environment env) {
-        new AssetAdministrationShellElementWalkerVisitor() {
-            @Override
-            public void visit(SubmodelElement el) {
-                Reference sem = el.getSemanticId();
-                if (sem != null && sem.getKeys() == null) {
-                    sem.setKeys(new ArrayList<>()); // 빈 리스트 할당
-                }
-            }
-        }.visit(env);
-    }
-
-    /** 기본 모드 (revertPaths=false) */
-    public List<Environment> uploadJsonFiles(MultipartFile[] jsonFiles) {
-        return uploadJsonFiles(jsonFiles, false);
     }
 
     // 이하 getter들…
